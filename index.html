@@ -1145,7 +1145,7 @@ const LOC=(()=>{
     const s=Math.max(W/im.width,H/im.height);const w=im.width*s,h=im.height*s;g.drawImage(im,(W-w)/2,(H-h)/2,w,h);c.pal=pal;c.hz=Math.round(H*.36);c.amb=amb;return c}
   // battle location by type
   function render(type,W,H,opt={}){
-    const PALS={ch_core:[{n1:'#d06bff',n2:'#ff3d8a'},'cave'],ch_lab:[{n1:'#5aff8a',n2:'#b45cff'},'cave'],ch_roof:[{n1:'#ff3d8a',n2:'#3ad1ff'},'tower'],ch_docks:[{n1:'#3ad1ff',n2:'#b45cff'},'forest'],ch_metro:[{n1:'#b45cff',n2:'#3ad1ff'},'tower'],ch_market:[{n1:'#b45cff',n2:'#ffb020'},'forest'],forest:[{n1:'#7affd8',n2:'#ffb0e8'},'forest'],town:[{n1:'#ff3d8a',n2:'#3ad1ff'},'forest'],tower:[{n1:'#b45cff',n2:'#ffffff'},'tower'],cave:[{n1:'#ff3d5a',n2:'#ffb020'},'cave'],arena:[{n1:'#ffb020',n2:'#ff3d5a'},'cave'],camp:[{n1:'#ff9a3a',n2:'#ffd84a'},'forest']};
+    const PALS={rift_battle:[{n1:'#b45cff',n2:'#3ad1ff'},'cave'],guild_boss:[{n1:'#ff3d8a',n2:'#b45cff'},'tower'],worldboss:[{n1:'#ff3d5a',n2:'#b45cff'},'cave'],ch_core:[{n1:'#d06bff',n2:'#ff3d8a'},'cave'],ch_lab:[{n1:'#5aff8a',n2:'#b45cff'},'cave'],ch_roof:[{n1:'#ff3d8a',n2:'#3ad1ff'},'tower'],ch_docks:[{n1:'#3ad1ff',n2:'#b45cff'},'forest'],ch_metro:[{n1:'#b45cff',n2:'#3ad1ff'},'tower'],ch_market:[{n1:'#b45cff',n2:'#ffb020'},'forest'],forest:[{n1:'#7affd8',n2:'#ffb0e8'},'forest'],town:[{n1:'#ff3d8a',n2:'#3ad1ff'},'forest'],tower:[{n1:'#b45cff',n2:'#ffffff'},'tower'],cave:[{n1:'#ff3d5a',n2:'#ffb020'},'cave'],arena:[{n1:'#ffb020',n2:'#ff3d5a'},'cave'],camp:[{n1:'#ff9a3a',n2:'#ffd84a'},'forest']};
     if(BGIMG[type]&&PALS[type]){const im=fromImage(type,W,H,PALS[type][0],PALS[type][1]);if(im)return im}
     const hz=Math.round(H*.36);
     if(type==='forest')return forest(W,H,hz);
@@ -2074,7 +2074,7 @@ const PASS_LEVELS=30;
 const ART_FILES={hero:{astra:1.18,kairos:1.15,volta:1.0,phoenix:1.0,pyro:1.0,bastion:1.0,nyx:1.0,glitch:1.0,grom:1.0,lyra:1.0,murr:1.0,rain:1.0,cipher:1.0,mila:1.0,zhar:1.0,pixel:1.0,raven:1.0,scrap:1.0,sol:1.0,tesla:1.0,silas:1.0},back:{astra:1.18,grom:1.0,lyra:1.0,murr:1.0,rain:1.0,cipher:1.0,mila:1.0,zhar:1.0,pixel:1.0,raven:1.0,scrap:1.0,sol:1.0,tesla:1.0,kairos:1.0,volta:1.0,phoenix:1.0,glitch:1.0,pyro:1.0,bastion:1.0,nyx:1.0,silas:1.0},sprite:{slimeking:1.25,whale:1.25,catdrone:1.25,shadowfox:1.25,mercury:1.25,moth:1.25,jelly:1.25,scorp:1.25,golem:1.25,chick:1.25},enemy:{slime:1.1,bot:1.1,bat:1.1,golem:1.15,ghost:1.1}};
 
 // Painted backgrounds (art/bg_<name>.webp). Add a name here once the file exists.
-const BG_FILES=['forest','town','tower','cave','arena','camp','city','ch_market','ch_metro','ch_docks','ch_roof','ch_lab','ch_core'];
+const BG_FILES=['forest','town','tower','cave','arena','camp','city','ch_market','ch_metro','ch_docks','ch_roof','ch_lab','ch_core','rift_battle','guild_boss','worldboss'];
 // ===== ENGINE: state, stats, economy =====
 const SAVE_KEY='neonrift_save_v1';
 const rnd=(a,b)=>a+Math.random()*(b-a), ri=(a,b)=>Math.floor(rnd(a,b+1)), pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -3101,7 +3101,7 @@ function openRift(){
       const R=S.rift,f=R.floor;const ally=S.team.filter(Boolean).filter(id=>(R.hp[id]??1)>0).map(id=>Object.assign(heroUnitOf(id),{hpFrac:R.hp[id]??1}));
       if(!ally.length){R.done=true;R.dead=true;save();render();return}
       o.style.display='none';
-      const res=await Battle.run({title:`Разлом · Этаж ${f}`,ally,enemy:riftFloorEnemies(f),allySprite:allySprite(),bg:'tower',bgOpt:{floor:f,rifts:1+Math.floor(f/3)},buffs:R.buffs,
+      const res=await Battle.run({title:`Разлом · Этаж ${f}`,ally,enemy:riftFloorEnemies(f),allySprite:allySprite(),bg:'rift_battle',bgOpt:{floor:f,rifts:1+Math.floor(f/3)},buffs:R.buffs,
         onResult:r=>{if(!r.win){R.done=true;R.dead=true;S.riftBest=Math.max(S.riftBest,f-1);save();return grant({gems:20*(f-1),cores:Math.floor((f-1)/2)})}
           Object.assign(R.hp,r.hpFrac);quest('rift');const it={gems:40+f*15,gold:5000*f};it['rs'+Math.floor(Math.random()*Math.min(6,1+Math.floor(f/2)))]=3+f;it.awk=2+Math.floor(f/2)+(f===10?15:0);if(f%3===0)it['imp'+Math.min(5,Math.floor(f/3))]=1;if(f===5)it.tickets=5;if(f===10){it.tickets=15;it.cores=10;it.urShard=10}return grant(it)}});
       o.style.display='';
@@ -3153,7 +3153,7 @@ function openGuild(){
       B.innerHTML=`<div class="card" style="text-align:center;background:radial-gradient(circle,#4a0a1a,#120a2a)"><img src="${ART.url('m:golem#ff2a4a',()=>ART.monster('golem','#ff2a4a'))}" style="width:130px;filter:drop-shadow(0 0 16px #ff2a4a)"><div class="title-neon" style="font-size:18px">Пожиратель Сети</div><div class="mut">6 раундов · наносите максимум урона · награда зависит от урона</div><button class="btn pink atk" style="width:100%;margin-top:8px">Атаковать (${S.daily.guildTries}/2)</button></div>
       <div class="h2">Рейтинг урона сегодня</div>${rank.map((x,i)=>`<div class="li" style="${x.me?'border-color:var(--pink)':''}"><b style="width:22px">${i+1}</b><div class="tx"><b>${x.n}</b></div><span style="color:var(--gold)">${fmt(x.d)}</span></div>`).join('')}`;
       $('.atk',B).onclick=async()=>{if(S.daily.guildTries<=0){toast('Попытки закончились');return}S.daily.guildTries--;const p=teamPower();const boss=monsterUnit(Math.max(5,Math.round(S.stage*1.3)),true,'fire');boss.mon='golem';boss.col='#ff2a4a';boss.name='Пожиратель Сети';boss.st.hp=Math.round(p*40);boss.st.atk=Math.round(p*.004);boss.st.def=50;
-        o.style.display='none';await Battle.run({title:'Босс гильдии',ally:playerTeamUnits(),enemy:[boss],allySprite:allySprite(),bg:'cave',bgOpt:{rifts:3},maxRounds:6,resultTitle:'ИТОГ',
+        o.style.display='none';await Battle.run({title:'Босс гильдии',ally:playerTeamUnits(),enemy:[boss],allySprite:allySprite(),bg:'guild_boss',bgOpt:{rifts:3},maxRounds:6,resultTitle:'ИТОГ',
           onResult:r=>{const d=r.enemyDmg;r.win=true;S.guild.best=Math.max(S.guild.best,d);S.guild.total+=d;quest('guild');return grant({guildCoins:150+Math.min(600,Math.floor(d/Math.max(1,p)*60)),gold:30000})}});o.style.display='';render();renderTop()};
     }
     if(gTab==='tree'){B.innerHTML=`<div class="mut" style="margin-bottom:8px">Каждый уровень: +2% АТК и HP всем героям класса.</div>`+Object.keys(CLS).map(c=>{const l=S.guild.tree[c]||0,cost=150*(l+1);return`<div class="li"><div class="ic">${CLS[c].i}</div><div class="tx"><b>${CLS[c].n} · ур. ${l}/20</b><small>Сейчас +${l*2}% АТК/HP</small><div class="bar" style="margin-top:4px"><i style="width:${l*5}%"></i></div></div><button class="btn sm ${S.guildCoins>=cost&&l<20?'gold':'gray'}" data-c="${c}">🏅${cost}</button></div>`}).join('');
