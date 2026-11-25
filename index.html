@@ -133,6 +133,18 @@ button{font:inherit;color:inherit;border:0;cursor:pointer;background:none}
 .ucin .ust{position:absolute;height:3px;border-radius:3px;background:linear-gradient(90deg,transparent,#fff,transparent);opacity:.8;animation:ustk .5s linear infinite;will-change:transform}
 @keyframes ustk{from{transform:translateX(60vw) skewY(-8deg)}to{transform:translateX(-120vw) skewY(-8deg)}}
 @keyframes ughost{0%{opacity:0;translate:-10% 0}15%{opacity:.32}100%{opacity:.25;translate:6% 0}}
+.bnt{display:flex;gap:6px;margin-bottom:10px}.bnt button{flex:1;padding:8px 4px;border-radius:12px;border:2px solid #e8a83a;background:linear-gradient(#4a2e18,#2a180a);color:#fff6d0;font:700 14px Philosopher,serif;opacity:.75}.bnt button.on{opacity:1;background:linear-gradient(#ffd56a,#e89a2a);color:#4a2200;box-shadow:0 0 12px rgba(255,200,80,.6)}
+.elx{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}.elx button{flex:1 0 28%;padding:6px 4px;border-radius:10px;border:1.5px solid color-mix(in srgb,var(--ec) 60%,transparent);background:rgba(20,10,40,.6);color:#fff;font:700 12px Manrope,system-ui}.elx button.on{background:color-mix(in srgb,var(--ec) 45%,#1a0e30);box-shadow:0 0 10px var(--ec)}
+.sigb i{background:linear-gradient(90deg,#3ad1ff,#c06bff)!important}
+.gbanner.norm{filter:saturate(.85)}.gbanner.fr{filter:hue-rotate(-20deg)}
+.c99h{text-align:center;line-height:.9;margin:4px 0 6px}.c99h b{display:block;font:900 italic 58px Unbounded,system-ui;background:linear-gradient(#fff 10%,#fff3b0 40%,#ffc23a 70%,#ff7a1a);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 3px 0 #2a0a00) drop-shadow(0 0 14px rgba(255,160,60,.6))}.c99h span{font:800 16px Unbounded,system-ui;letter-spacing:6px;color:#fff;text-shadow:0 0 10px #ff3d8a,0 2px 0 #000}
+.c99s{margin:0 14px 10px;padding:8px 10px;border-radius:12px;background:rgba(20,8,40,.72);border:1.5px solid #e8a83a;color:#fff6d0;font:600 12px/1.4 Manrope,system-ui;text-align:center}
+.c99g{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding:0 14px}
+.c99c{position:relative;aspect-ratio:1;border-radius:12px;background:linear-gradient(#3a2470,#1c1040);border:1.5px solid rgba(180,140,255,.35);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.c99c small{position:absolute;top:2px;left:5px;font:800 10px Manrope,system-ui;color:#d8c8ff}.c99c span .ri{width:28px!important;height:28px!important}
+.c99c.big{background:linear-gradient(#8a5a10,#4a2a08);border-color:#ffd56a;box-shadow:0 0 8px rgba(255,200,80,.45)}
+.c99c.got{opacity:.45}.c99c.got i{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}.c99c.got i .ri{width:30px!important;height:30px!important}
+.c99c.now{opacity:1;border:2.5px solid #fff;box-shadow:0 0 14px #ffd56a,0 0 0 3px #ff3d8a;animation:pulse 1s ease-in-out infinite alternate}
 @keyframes uslab{0%{transform:skewY(-8deg) scaleX(0)}14%{transform:skewY(-8deg) scaleX(1.05)}20%{transform:skewY(-8deg) scaleX(1)}100%{transform:skewY(-8deg) scaleX(1)}}
 @keyframes ulines{to{transform:translateX(40px)}}
 @keyframes uimg{0%{opacity:.6;translate:-30% 0;scale:1.2}12%{opacity:1;translate:0 0;scale:1.05}80%{opacity:1;translate:3% 0;scale:1}100%{opacity:0;translate:12% 0;scale:1.08}}
@@ -2085,7 +2097,7 @@ function load(){try{const raw=localStorage.getItem(SAVE_KEY);S=raw?Object.assign
 function save(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(S))}catch(e){}}
 function ensureDaily(){
   const t=today();
-  if(!S.daily||S.daily.date!==t){S.daily={date:t,q:{win:0,summon:0,afk:0,lvl:0,arena:0,sprite:0,rift:0,guild:0},cl:[],pts:0,chests:[],freeHero:true,freeSprite:true,raids:2,arena:5,guildTries:2,assist:false}}
+  if(!S.daily||S.daily.date!==t){S.hearts=(S.hearts||0)+60;S.daily={date:t,q:{win:0,summon:0,afk:0,lvl:0,arena:0,sprite:0,rift:0,guild:0},cl:[],pts:0,chests:[],freeHero:true,freeSprite:true,raids:2,arena:5,guildTries:2,assist:false}}
   if(S.login.last!==t){S.login.last=t;S.login.day=(S.login.day%7)+1;S.login.pending=true}
 }
 
@@ -2114,8 +2126,8 @@ function grant(it,mult=1){const lines=[];for(const k in it){const v=Math.round(i
   if(k==='gear'){it.gear.forEach(gk=>{S.bag[gk]=(S.bag[gk]||0)+1});lines.push({k:'gear',v:it.gear.length});continue}
   if(INVK.test(k)){inv()[k]=(inv()[k]||0)+v;lines.push({k,v});continue}
   S[k]=(S[k]||0)+v;lines.push({k,v})}save();return lines}
-const RES={gold:{n:'Золото',i:'🪙'},gems:{n:'Алмазы',i:'💎'},exp:{n:'Опыт',i:'📘'},tickets:{n:'Билеты призыва',i:'🎫'},cores:{n:'Ядра спрайтов',i:'🔷'},guildCoins:{n:'Жетоны гильдии',i:'🏅'},urShard:{n:'UR-осколки',i:'🌟'},gear:{n:'Снаряжение',i:'🎒'},pxp:{n:'Опыт аккаунта',i:'⭐'}};
-{const M={gold:'coin',gems:'gem',exp:'book',tickets:'ticket',cores:'crystal',guildCoins:'medal',urShard:'shard',gear:'bag',pxp:'star'};for(const k in M)RES[k].i=ICON.svg(M[k],'ri')}
+const RES={gold:{n:'Золото',i:'🪙'},gems:{n:'Алмазы',i:'💎'},exp:{n:'Опыт',i:'📘'},tickets:{n:'Билеты призыва',i:'🎫'},cores:{n:'Ядра спрайтов',i:'🔷'},guildCoins:{n:'Жетоны гильдии',i:'🏅'},urShard:{n:'UR-осколки',i:'🌟'},gear:{n:'Снаряжение',i:'🎒'},pxp:{n:'Опыт аккаунта',i:'⭐'},hearts:{n:'Сердечки дружбы',i:'❤'}};
+{const M={hearts:'heart',gold:'coin',gems:'gem',exp:'book',tickets:'ticket',cores:'crystal',guildCoins:'medal',urShard:'shard',gear:'bag',pxp:'star'};for(const k in M)RES[k].i=ICON.svg(M[k],'ri')}
 // ---------- items: implants / chips / rift shards ----------
 const ITIER=['Серый','Зелёный','Синий','Фиолетовый','Золотой','Красный'];
 const ITC=['#8fa3b8','#5ad85a','#4aa8ff','#c06bff','#ffa23a','#ff3d5a'];
@@ -2630,7 +2642,7 @@ function scrCity(sc){
   cv.addEventListener('pointerleave',()=>{st.press=null});
   const side=el(`<div class="side city"></div>`),sideR=el(`<div class="side r city"></div>`);
   {const b=el(`<button class="sbtn fest"><i><img src="${heroImg(S.wish)}"></i><span>Фестиваль</span></button>`);b.onclick=()=>{SFX.click();openSummon()};side.appendChild(b)}
-  [['portal','Новое',openFeatures,!S.seenFeat],['bag','Сумка',openBag,false],['assistant','Ассистент',openAssistant,!S.daily.assist],['quests','Задания',openQuests,questReady()],['login','Вход',openLogin,S.login.pending],['pass','Пропуск',()=>{go('shop');shopTab='pass';go('shop')},passReady()]].forEach(([i,n,f,d])=>{const b=el(`<button class="sbtn ${d?'dot':''}"><i>${ICON.svg(i)}</i><span>${n}</span></button>`);b.onclick=()=>{SFX.click();f()};(side.children.length<3?side:sideR).appendChild(b)});
+  [['ticketPremium','9999',openCal9999,calReady()],['portal','Новое',openFeatures,!S.seenFeat],['bag','Сумка',openBag,false],['assistant','Ассистент',openAssistant,!S.daily.assist],['quests','Задания',openQuests,questReady()],['login','Вход',openLogin,S.login.pending],['pass','Пропуск',()=>{go('shop');shopTab='pass';go('shop')},passReady()]].forEach(([i,n,f,d])=>{const b=el(`<button class="sbtn ${d?'dot':''}"><i>${ICON.svg(i)}</i><span>${n}</span></button>`);b.onclick=()=>{SFX.click();f()};(side.children.length<3?side:sideR).appendChild(b)});
   sc.appendChild(side);[['courier','Курьер',()=>openCourier(),courierReady()],['forge','Кузница',()=>openForge(),forgeReady()]].forEach(([i,n,f,d])=>{const b=el(`<button class="sbtn ${d?'dot':''}"><i>${ICON.svg(i)}</i><span>${n}</span></button>`);b.onclick=()=>{SFX.click();f()};sideR.appendChild(b)});[[S.muted?'mute':'sound','Звук',b=>{S.muted=!S.muted;save();toast(S.muted?'Звук выключен':'Звук включён');b.querySelector('i').innerHTML=ICON.svg(S.muted?'mute':'sound')}]].forEach(([i,n,f])=>{const b=el(`<button class="sbtn"><i>${ICON.svg(i)}</i><span>${n}</span></button>`);b.onclick=()=>{SFX.click();f(b)};sideR.appendChild(b)});sc.appendChild(sideR);
   if(LOC.BGIMG.city){const py=CITY.mapPt(0,.655,W,H)[1]*r.height;const nb=$('#nav');const lim=(nb?nb.getBoundingClientRect().top-r.top:r.height)-70-3*66;[side,sideR].forEach(c=>c.style.top=Math.max(8,Math.min(py,lim))+'px')}
   const bb=el(`<button class="bigbtn"><i>${ICON.svg('sword')}</i><span><b>Кампания</b><small>Этап ${stageName(S.stage)}</small></span></button>`);bb.onclick=()=>startStage();sc.appendChild(bb);{const nx=nextStageRw();const rd=stageRwReady();const gbar=el(`<div class="goalbar ${rd?'ready':''}">${rd?'Награда кампании готова! Забери':nx?`Цель: пройди этап ${stageName(nx[0])}`:'Все награды кампании собраны'}<br>${nx?rwIcons(nx[1]):''}</div>`);gbar.onclick=()=>{SFX.click();openStageRewards()};sc.appendChild(gbar);requestAnimationFrame(()=>{const n=$('#nav');gbar.style.bottom=((n?n.offsetHeight:70)+24+bb.offsetHeight+8)+'px'})}
@@ -2844,32 +2856,79 @@ function openHero(id){
 }
 
 // ---------- SUMMON ----------
+// ---------- 9999 calendar ----------
+const CAL_BONUS={7:{gems:500},14:{urShard:20},21:{cores:20},30:{tickets:30,gems:1000},50:{urShard:50},60:{gems:2000},77:{tickets:77},90:{urShard:60},100:{urShard:100,gems:5000}};
+function cal(){S.cal=S.cal||{n:0,last:''};return S.cal}
+function calReady(){const c=cal();return c.n<100&&c.last!==today()}
+function openCal9999(){
+  const o=el(`<div class="gacha fx2" style="background:linear-gradient(rgba(10,4,30,.1),rgba(10,4,30,.35) 35%,rgba(10,4,30,.6)),url(art/bg_rewards.webp) center top/cover !important"></div>`);$('#app').appendChild(o);
+  const render=()=>{const c=cal(),rd=calReady();
+    o.innerHTML=`<div class="row" style="padding:10px"><button class="btn sm gray back">← Назад</button><span class="sp"></span><span class="chip">${ICON.svg('ticket','ri')} ${S.tickets}</span></div>
+    <div class="c99h"><b>9999</b><span>ПРИЗЫВОВ</span></div>
+    <div class="c99s">Заходи каждый день 100 дней — по <b>10 купонов</b> ежедневно и большие подарки на особые дни!<br>Получено: <b>${c.n*10}</b> / 1000 купонов · день <b>${c.n}</b> / 100</div>
+    <div class="c99g">${Array.from({length:100},(_,i)=>{const d=i+1,b=CAL_BONUS[d],got=d<=c.n,now=d===c.n+1&&rd;
+      return`<div class="c99c ${got?'got':''} ${now?'now':''} ${b?'big':''}"><small>${d}</small>${b?`<span>${(RES[Object.keys(b)[0]]||{}).i}</span>`:`<span>${ICON.svg('ticket','ri')}</span>`}${got?`<i>${ICON.svg('check','ri')}</i>`:''}</div>`}).join('')}</div>
+    <div style="padding:10px 14px 30px"><button class="btn ${rd?'gold':'gray'} big clm" style="width:100%">${c.n>=100?'Календарь пройден!':rd?`Забрать день ${c.n+1}: 10 купонов${CAL_BONUS[c.n+1]?' + подарок':''}`:'Приходи завтра за новыми купонами'}</button></div>`;
+    $('.back',o).onclick=()=>{o.remove();refresh()};
+    $('.clm',o).onclick=()=>{if(!calReady())return;const c=cal();c.n++;c.last=today();const it=Object.assign({tickets:10},CAL_BONUS[c.n]||{});if(CAL_BONUS[c.n]&&CAL_BONUS[c.n].tickets)it.tickets+=CAL_BONUS[c.n].tickets;const lines=grant(it);save();renderTop();render();showRewards(lines,`9999 призывов · день ${c.n}`);
+      const cell=o.querySelectorAll('.c99c')[c.n-1];if(cell)cell.scrollIntoView({block:'center',behavior:'smooth'})};
+    const cur=o.querySelectorAll('.c99c')[Math.min(99,cal().n)];if(cur)setTimeout(()=>cur.scrollIntoView({block:'center'}),50)};
+  render()}
+
+// ---------- summon terminal: banners, element, signal ----------
+const BANNERS={
+  prem:{n:'Премиум',sub:'Неоновый Фестиваль',rate:'UR 2% · SSR 12% · SR 33% · R 53%'},
+  norm:{n:'Обычный',sub:'Уличный набор',rate:'SSR 4% · SR 30% · R 66% · за золото',cost1:30000,cost10:270000},
+  fr:{n:'Дружеский',sub:'Сердечки друзей',rate:'SR 25% · R 75% · за сердечки',cost1:100,cost10:1000}};
+const SIG_NEED=1000;
+function rollRar(b){const r=Math.random();if(b==='norm')return r<.04?'SSR':r<.34?'SR':'R';if(b==='fr')return r<.25?'SR':'R';return null}
+function pullFromBanner(b){S.totalPulls++;const rar=rollRar(b);let pool=HEROES.filter(h=>h.rar===rar);const el=S.sigEl;if(el&&Math.random()<.5){const p2=pool.filter(h=>h.el===el);if(p2.length)pool=p2}
+  const d=pick(pool);let isNew=false;if(!S.heroes[d.id]){S.heroes[d.id]={lvl:1,star:1,shards:0,gear:{}};isNew=true}else S.heroes[d.id].shards+=10;return{id:d.id,rar,isNew}}
+function signalPick(onDone){const el=S.sigEl||'light';const list=HEROES.filter(h=>h.rar==='SSR'&&h.el===el);
+  const m=modal('Сигнал готов! Выбери SSR',`<div class="mut" style="text-align:center;margin-bottom:8px">Стихия: ${ELEM[el].i} ${ELEM[el].n}</div><div class="grid" style="grid-template-columns:repeat(3,1fr)">${list.map(h=>`<div class="hc" data-s="${h.id}" style="background:${RAR.SSR.g}"><img src="${heroImg(h.id)}"><span class="lv">${h.name}</span></div>`).join('')}</div>`,[{t:'Позже',c:'gray'}]);
+  m.m.querySelectorAll('[data-s]').forEach(x=>x.onclick=()=>{const id=x.dataset.s;S.signal-=SIG_NEED;let isNew=false;if(!S.heroes[id]){S.heroes[id]={lvl:1,star:1,shards:0,gear:{}};isNew=true}else S.heroes[id].shards+=10;save();m.close();pullAnim([{img:heroImg(id),name:HMAP[id].name,rar:'SSR',isNew}],onDone)})}
+
 function pullHero(forceUR){
   S.pity++;S.totalPulls++;let r=Math.random(),rar;
   if(forceUR||S.pity>=60)rar='UR';else rar=r<.02?'UR':r<.14?'SSR':r<.47?'SR':'R';
   if(rar==='UR')S.pity=0;
-  let pool=HEROES.filter(h=>h.rar===rar);let d=pick(pool);if(rar==='UR'&&S.wish&&Math.random()<.5)d=HMAP[S.wish];
+  let pool=HEROES.filter(h=>h.rar===rar);if(rar!=='UR'&&S.sigEl&&Math.random()<.5){const p2=pool.filter(h=>h.el===S.sigEl);if(p2.length)pool=p2}let d=pick(pool);if(rar==='UR'&&S.wish&&Math.random()<.5)d=HMAP[S.wish];
   let isNew=false;if(!S.heroes[d.id]){S.heroes[d.id]={lvl:1,star:1,shards:0,gear:{}};isNew=true}else S.heroes[d.id].shards+=10;
   return{id:d.id,rar,isNew};
 }
-function openSummon(){
+function openSummon(){let bn='prem';S.signal=S.signal||0;S.hearts=S.hearts||0;
   const o=el(`<div class="gacha" style="background:linear-gradient(rgba(10,4,30,.35),rgba(10,4,30,.15) 40%,rgba(10,4,30,.55)),url(art/bg_summon.webp) center/cover"></div>`);$('#app').appendChild(o);
-  const render=()=>{const w=HMAP[S.wish];
-    o.innerHTML=`<div class="row" style="margin-bottom:10px"><button class="btn sm gray back">← Назад</button><span class="sp"></span><span class="chip">${ICON.svg('ticket','ri')} ${S.tickets}</span><span class="chip">${ICON.svg('gem','ri')} ${fmt(S.gems)}</span></div>
-    <div class="gbanner"><img src="${heroImg(S.wish)}"><div class="gt"><span class="chip" style="background:var(--pink)">ИВЕНТ</span><b>Неоновый Фестиваль</b><small>Шанс UR-героя «${w.name}» — 50% от всех UR!</small></div><div class="rate">UR 2% · SSR 12% · SR 33% · R 53%</div></div>
-    <div class="card" style="margin-top:10px"><div class="row"><span class="sp">Гарант UR через <b style="color:var(--gold)">${60-S.pity}</b> призывов</span><button class="btn sm cyan wish">Сменить желание</button></div><div class="bar" style="margin-top:6px"><i style="width:${S.pity/60*100}%"></i></div>
-    <div class="row" style="margin-top:8px"><span class="mut sp">Призвано: <b style="color:#fff">${S.totalPulls}</b> / 9999</span>${!S.firstTen?'<span class="chip" style="color:var(--gold)">Первый ×10 = гарант UR!</span>':''}</div></div>
-    <div class="row"><button class="btn sp p1 ${S.daily.freeHero?'gold dot':''}">${S.daily.freeHero?'Бесплатно ×1':`×1 · ${S.tickets>=1?'🎫1':'💎300'}`}</button><button class="btn pink sp p10">×10 · ${S.tickets>=10?'🎫10':'💎2800'}</button></div>
-    <div class="card" style="margin-top:10px"><b>UR-герои</b><div class="grid" style="margin-top:8px;grid-template-columns:repeat(5,1fr)">${HEROES.filter(h=>h.rar==='UR').map(h=>`<div class="hc ${S.heroes[h.id]?'':'lock'}" style="background:${RAR.UR.g}"><img src="${heroImg(h.id)}"></div>`).join('')}</div></div>`;
+  const render=()=>{const w=HMAP[S.wish],B=BANNERS[bn],sel=S.sigEl;
+    const tabs=`<div class="bnt">${Object.entries(BANNERS).map(([k,b])=>`<button class="${bn===k?'on':''}" data-b="${k}">${b.n}</button>`).join('')}</div>`;
+    const elems=`<div class="card" style="margin-top:10px"><div class="row"><b class="sp">Стихия-фокус</b><small class="mut">50% героев выбранной стихии</small></div><div class="elx">${['any',...Object.keys(ELEM)].map(k=>`<button class="${(sel||'any')===k?'on':''}" data-e="${k}" style="--ec:${k==='any'?'#fff':ELEM[k].c}">${k==='any'?'Все':ELEM[k].i+' '+ELEM[k].n}</button>`).join('')}</div></div>`;
+    let body='';
+    if(bn==='prem'){body=`<div class="gbanner"><img src="${heroImg(S.wish)}"><div class="gt"><span class="chip" style="background:var(--pink)">ИВЕНТ</span><b>Неоновый Фестиваль</b><small>Шанс UR-героя «${w.name}» — 50% от всех UR!</small></div><div class="rate">${B.rate}</div></div>
+      <div class="card" style="margin-top:10px"><div class="row"><span class="sp">Гарант UR через <b style="color:var(--gold)">${60-S.pity}</b> призывов</span><button class="btn sm cyan wish">Сменить желание</button></div><div class="bar" style="margin-top:6px"><i style="width:${S.pity/60*100}%"></i></div>
+      <div class="row" style="margin-top:10px"><span class="sp">Очки сигнала <b style="color:#9ff3ff">${Math.min(S.signal,SIG_NEED)}</b> / ${SIG_NEED}</span>${S.signal>=SIG_NEED?'<button class="btn sm gold sig">Выбрать SSR</button>':'<small class="mut">+10 за призыв</small>'}</div><div class="bar sigb" style="margin-top:6px"><i style="width:${Math.min(100,S.signal/SIG_NEED*100)}%"></i></div>
+      <div class="row" style="margin-top:8px"><span class="mut sp">Призвано: <b style="color:#fff">${S.totalPulls}</b> / 9999</span>${!S.firstTen?'<span class="chip" style="color:var(--gold)">Первый ×10 = гарант UR!</span>':''}</div></div>
+      <div class="row"><button class="btn sp p1 ${S.daily.freeHero?'gold dot':''}">${S.daily.freeHero?'Бесплатно ×1':`×1 · ${S.tickets>=1?ICON.svg('ticket','ri')+'1':ICON.svg('gem','ri')+'300'}`}</button><button class="btn pink sp p10">×10 · ${S.tickets>=10?ICON.svg('ticket','ri')+'10':ICON.svg('gem','ri')+'2800'}</button></div>`}
+    else{const isN=bn==='norm',cur=isN?'coin':'heart',have=isN?S.gold:S.hearts;const show=HEROES.filter(h=>isN?h.rar!=='UR':(h.rar==='SR'||h.rar==='R'));
+      body=`<div class="gbanner ${bn}"><img src="${heroImg(show.find(h=>h.rar===(isN?'SSR':'SR')).id)}"><div class="gt"><span class="chip" style="background:${isN?'#3a8a5a':'#e0306a'}">${isN?'ВСЕГДА':'ДРУЗЬЯ'}</span><b>${B.sub}</b><small>${isN?'Копи героев для звёзд за золото':'Сердечки приходят от друзей каждый день'}</small></div><div class="rate">${B.rate}</div></div>
+      <div class="card" style="margin-top:10px"><div class="row"><span class="sp">У тебя: ${ICON.svg(cur,'ri')} <b>${fmt(have)}</b></span></div><div class="mut" style="margin-top:4px">${isN?'Не тратит купоны и алмазы. Очки сигнала не даёт.':'+60 сердечек каждый день от друзей и гильдии.'}</div></div>
+      <div class="row"><button class="btn sp p1 ${have>=B.cost1?'cyan':'gray'}">×1 · ${ICON.svg(cur,'ri')}${fmt(B.cost1)}</button><button class="btn sp p10 ${have>=B.cost10?'pink':'gray'}">×10 · ${ICON.svg(cur,'ri')}${fmt(B.cost10)}</button></div>
+      <div class="card" style="margin-top:10px"><b>Герои баннера</b><div class="grid" style="margin-top:8px;grid-template-columns:repeat(5,1fr)">${show.map(h=>`<div class="hc ${S.heroes[h.id]?'':'lock'}" style="background:${RAR[h.rar].g}"><img src="${heroImg(h.id)}"></div>`).join('')}</div></div>`}
+    o.innerHTML=`<div class="row" style="margin-bottom:10px"><button class="btn sm gray back">← Назад</button><span class="sp"></span><span class="chip">${ICON.svg('ticket','ri')} ${S.tickets}</span><span class="chip">${ICON.svg('gem','ri')} ${fmt(S.gems)}</span></div>${tabs}${body}${elems}
+      ${bn==='prem'?`<div class="card" style="margin-top:10px"><b>UR-герои</b><div class="grid" style="margin-top:8px;grid-template-columns:repeat(5,1fr)">${HEROES.filter(h=>h.rar==='UR').map(h=>`<div class="hc ${S.heroes[h.id]?'':'lock'}" style="background:${RAR.UR.g}"><img src="${heroImg(h.id)}"></div>`).join('')}</div></div>`:''}`;
     $('.back',o).onclick=()=>{o.remove();refresh()};
-    $('.wish',o).onclick=()=>{const m=modal('Выберите желаемого UR',`<div class="grid" style="grid-template-columns:repeat(3,1fr)">${HEROES.filter(h=>h.rar==='UR').map(h=>`<div class="hc" data-w="${h.id}" style="background:${RAR.UR.g};${S.wish===h.id?'box-shadow:0 0 0 3px #fff':''}"><img src="${heroImg(h.id)}"><span class="lv">${h.name}</span></div>`).join('')}</div>`,[]);m.m.querySelectorAll('[data-w]').forEach(x=>x.onclick=()=>{S.wish=x.dataset.w;save();m.close();render()})};
+    o.querySelectorAll('[data-b]').forEach(x=>x.onclick=()=>{bn=x.dataset.b;SFX.click();render()});
+    o.querySelectorAll('[data-e]').forEach(x=>x.onclick=()=>{S.sigEl=x.dataset.e==='any'?null:x.dataset.e;save();SFX.click();render()});
+    const wb=$('.wish',o);if(wb)wb.onclick=()=>{const m=modal('Выберите желаемого UR',`<div class="grid" style="grid-template-columns:repeat(3,1fr)">${HEROES.filter(h=>h.rar==='UR').map(h=>`<div class="hc" data-w="${h.id}" style="background:${RAR.UR.g};${S.wish===h.id?'box-shadow:0 0 0 3px #fff':''}"><img src="${heroImg(h.id)}"><span class="lv">${h.name}</span></div>`).join('')}</div>`,[]);m.m.querySelectorAll('[data-w]').forEach(x=>x.onclick=()=>{S.wish=x.dataset.w;save();m.close();render()})};
+    const sg=$('.sig',o);if(sg)sg.onclick=()=>{if(!S.sigEl){toast('Сначала выбери стихию-фокус ниже');return}signalPick(()=>render())};
     $('.p1',o).onclick=()=>doPull(1);$('.p10',o).onclick=()=>doPull(10);
   };
   const doPull=n=>{
+    if(bn!=='prem'){const B=BANNERS[bn],c=n===1?B.cost1:B.cost10,k=bn==='norm'?'gold':'hearts';if((S[k]||0)<c){toast(bn==='norm'?'Не хватает золота':'Не хватает сердечек');return}S[k]-=c;
+      const res=[];for(let i=0;i<n;i++)res.push(pullFromBanner(bn));quest('summon',n);addPxp(n*2);save();renderTop();pullAnim(res.map(r=>({img:heroImg(r.id),name:HMAP[r.id].name,rar:r.rar,isNew:r.isNew})),()=>render(),()=>doPull(n));return}
     if(n===1&&S.daily.freeHero){S.daily.freeHero=false}
     else if(S.tickets>=n)S.tickets-=n;else{const c=n===1?300:2800;if(S.gems<c){toast('Не хватает алмазов');go('shop');o.remove();return}S.gems-=c}
     const res=[];const forceFirst=n===10&&!S.firstTen;for(let i=0;i<n;i++)res.push(pullHero(forceFirst&&i===9&&!res.some(r=>r.rar==='UR')));if(n===10)S.firstTen=true;
-    quest('summon',n);addPxp(n*5);save();pullAnim(res.map(r=>({img:heroImg(r.id),name:HMAP[r.id].name,rar:r.rar,isNew:r.isNew})),()=>render(),()=>doPull(n));
+    S.signal=(S.signal||0)+n*10;
+    quest('summon',n);addPxp(n*5);save();pullAnim(res.map(r=>({img:heroImg(r.id),name:HMAP[r.id].name,rar:r.rar,isNew:r.isNew})),()=>{render();if(S.signal>=SIG_NEED&&S.sigEl)toast('Сигнал заполнен — выбери SSR!')},()=>doPull(n));
   };
   render();
 }
