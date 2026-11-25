@@ -2373,7 +2373,7 @@ const Battle=(()=>{
     u.energy=Math.min(100,u.energy+(u.cls==='sup'?38:32));
   }
   const CIMG={};
-  const BIGART=['astra','bastion','cipher','glitch','grom','lyra','mila','murr','nyx','phoenix','pixel','pyro','rain','raven','scrap','tesla','volta','zhar'];
+  const BIGART=['silas','kairos','sol','astra','bastion','cipher','glitch','grom','lyra','mila','murr','nyx','phoenix','pixel','pyro','rain','raven','scrap','tesla','volta','zhar'];
   async function cutin(u){
     if(headless)return;SFX.ult();const d=u.hid?HMAP[u.hid]:null;const el=document.createElement('div');el.className='ucin '+u.side;const ec=ELEM[u.el].c;el.style.setProperty('--ec',ec);const dur=1.45/speed;el.style.setProperty('--sp',dur+'s');
     const img=u.hid&&BIGART.includes(u.hid)?'art/big/'+u.hid+'.webp':(u.hid?ART.url('h:'+u.hid,()=>ART.hero(d)):ART.url('m:'+u.mon+u.col,()=>ART.monster(u.mon,u.col)));
