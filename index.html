@@ -47,6 +47,9 @@ button{font:inherit;color:inherit;border:0;cursor:pointer;background:none}
 .hc{position:relative;border-radius:12px;padding:3px;aspect-ratio:.78;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;overflow:hidden;cursor:pointer}
 .hc::before{content:'';position:absolute;inset:2px;border-radius:10px;background:radial-gradient(circle at 50% 35%,rgba(255,255,255,.18),rgba(10,6,24,.9) 70%)}
 .hc img{position:absolute;top:6%;left:50%;transform:translateX(-50%);width:88%;z-index:1}
+.hc img.collection-mini{top:auto;bottom:12%;width:88%;height:81%;object-fit:contain;object-position:center bottom;transform-origin:50% 100%;animation:mini-breathe 2.8s ease-in-out infinite}
+@keyframes mini-breathe{50%{transform:translateX(-50%) scale(.993,1.014)}}
+@media(prefers-reduced-motion:reduce){.hc img.collection-mini{animation:none}}
 .hc .lv{position:relative;z-index:2;font-size:10px;font-weight:900;background:rgba(0,0,0,.7);border-radius:6px;padding:0 5px;margin-bottom:1px}
 .hc .rb{position:absolute;top:3px;left:3px;z-index:2;font-size:9px;font-weight:900;padding:0 4px;border-radius:5px;background:rgba(0,0,0,.6)}
 .hc .el{position:absolute;top:2px;right:4px;z-index:2;font-size:12px}
@@ -636,7 +639,7 @@ button{font:inherit;color:inherit;border:0;cursor:pointer;background:none}
 .b-result.win .r-throne .rays{opacity:.5}
 .b-result.lose{background:linear-gradient(rgba(10,6,30,.25),rgba(10,6,30,.35) 45%,rgba(10,6,30,.65)),url(art/bg_result_lose.webp) center top/cover no-repeat!important}
 .gart{display:inline-block;background-repeat:no-repeat;filter:drop-shadow(0 2px 2px rgba(0,0,0,.5))}
-</style></head><body><div id="app"></div><script>
+</style></head><body><div id="app"></div><script src="miniatures.js"></script><script>
 // ===== ICONS: hand-made game icons (SVG), no emoji =====
 const ICON=(()=>{
   const G=(id,a,b)=>`<linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>`;
@@ -1909,26 +1912,75 @@ front2:{idle:[0,0,6,7],walk:[1,0,6,10],run:[1,0,6,14],fly:[1,0,6,10],attack:[2,0
     if(P.q.glow){const rg=g.createRadialGradient(x,y-height*.5,0,x,y-height*.5,height*.6);rg.addColorStop(0,`rgba(255,220,120,${.22*P.q.glow})`);rg.addColorStop(1,'rgba(255,220,120,0)');g.save();g.globalCompositeOperation='lighter';g.fillStyle=rg;g.fillRect(x-height,y-height*1.2,height*2,height*1.4);g.restore()}
     return true;
   }
-  // Unified miniatures: the collection and both combat sides share the same character art.
+  // The new sprites are isolated from the original art so both views can fall back independently.
   const MINI_IDS=new Set(['astra','bastion','cipher','glitch','grom','kairos','lyra','mila','murr','nyx','phoenix','pixel','pyro','rain','raven','scrap','silas','sol','tesla','volta','zhar']);
-  const MINI={}, MINI_PENDING={};
+  const MINI={}, MINI_PENDING={}, MINI_URL={};
+  function loadMiniImage(src){
+    return new Promise(resolve=>{
+      const im=new Image();
+      im.onload=()=>resolve(im);
+      im.onerror=()=>resolve(null);
+      im.src=src;
+    });
+  }
   function miniLoad(id){
     if(!MINI_IDS.has(id.replace(/_b$/,'')))return load(id);
     if(MINI_PENDING[id])return MINI_PENDING[id];
-    return MINI_PENDING[id]=new Promise(resolve=>{const im=new Image();im.onload=()=>{MINI[id]=im;resolve()};im.onerror=()=>{Promise.resolve(load(id)).then(resolve,resolve)};im.src='art/hero_'+id.replace(/_b$/,'_back')+'.webp'});
+    return MINI_PENDING[id]=(async()=>{
+      const hero=id.replace(/_b$/,'');
+      const view=id===hero?'front':'back';
+      const src=miniatureSource(hero,view);
+      if(src){
+        const sprite=await loadMiniImage(src);
+        if(sprite){MINI[id]=sprite;MINI_URL[id]=src;return}
+      }
+      const legacy=await loadMiniImage('art/hero_'+id.replace(/_b$/,'_back')+'.webp');
+      if(legacy){MINI[id]=legacy;return}
+      await load(id);
+    })();
   }
   function miniDraw(g,id,anim,t,p,x,y,height,flip,inst){
     const im=MINI[id];if(!im)return draw(g,id,anim,t,p,x,y,height,flip,inst);
     const phase=t/1000, q=Math.max(0,Math.min(1,p||0)), pulse=Math.sin(q*Math.PI);
-    const moving=['walk','run','fly'].includes(anim), attack=['attack','ult','tap'].includes(anim);
-    const bob=moving?Math.abs(Math.sin(phase*9))*height*.035:attack?pulse*height*.055:0;
-    const breath=Math.sin(phase*2.3)*.014, w=height*im.naturalWidth/im.naturalHeight;
-    g.save();g.translate(x,y-bob);g.scale((flip?-1:1)*(1-breath*.5),1+breath);
-    g.rotate(attack?pulse*.09:anim==='hit'?-pulse*.12:Math.sin(phase*1.4)*.012);
-    if(anim==='die')g.globalAlpha*=1-q;
-    g.drawImage(im,-w/2,-height,w,height);g.restore();return true;
+    const breath=Math.sin(phase*2.3)*.014;
+    let dx=0,dy=0,rotation=Math.sin(phase*1.4)*.012,sx=1-breath*.5,sy=1+breath;
+    if(anim==='walk'||anim==='run'||anim==='fly'){
+      const stride=Math.sin(phase*(anim==='run'?14:9));
+      dy=-Math.abs(stride)*.045;
+      rotation+=stride*.042;
+    }else if(anim==='attack'||anim==='tap'){
+      const wind=Math.sin(Math.min(1,q/.28)*Math.PI);
+      const strike=q>.28?Math.sin((q-.28)/.72*Math.PI):0;
+      dx=strike*.14-wind*.045;
+      dy=-strike*.045;
+      rotation+=strike*.14-wind*.09;
+      sx+=.04*strike;
+      sy-=.04*wind;
+    }else if(anim==='ult'){
+      dy=-pulse*.12;
+      sy+=pulse*.09;
+      rotation+=pulse*.08;
+    }else if(anim==='hit'||anim==='stun'){
+      const recoil=anim==='stun'?Math.sin(phase*12)*.22:pulse;
+      dx=-recoil*.07;
+      rotation-=recoil*.15;
+    }else if(anim==='victory'){
+      dy=-Math.max(0,Math.sin(phase*7))*.09;
+    }else if(anim==='die'){
+      rotation=-q*q*1.15;
+    }
+    const w=height*im.naturalWidth/im.naturalHeight;
+    g.save();
+    g.translate(x,y);
+    if(flip)g.scale(-1,1);
+    g.translate(dx*height,dy*height);
+    g.rotate(rotation);
+    g.scale(sx,sy);
+    g.drawImage(im,-w/2,-height,w,height);
+    g.restore();
+    return true;
   }
-  return{DEFS,SPRITES_A,load:miniLoad,has,ok:id=>!!MINI[id]||ok(id),draw:miniDraw,pose};
+  return{load:miniLoad,has,ok:id=>!!MINI[id]||ok(id),draw:miniDraw,frontUrl:id=>MINI_URL[id],pose};
 })();
 // ===== DATA =====
 
@@ -2487,8 +2539,15 @@ const Battle=(()=>{
       g.globalAlpha=alpha;g.save();g.translate(X,Y-lift);g.rotate(rot);if(u.side==='e')g.scale(-1,1);g.scale((1+br*.012)*sx2,(1-br*.018)*sy2);
       if(u.energy>=100&&!u.dead){g.shadowColor=ec;g.shadowBlur=(18+Math.sin(t/100)*8)*DPR}
       if(t-u.hitT<120)g.filter='brightness(2.4) saturate(.4)';
-      const rid=u.hid?(u.side==='a'?u.hid+'_b':u.hid):null;if(rid&&RIG.ok(rid)&&!u.dead){g.restore();g.save();g.translate(X,Y-lift);if(u.side==='e')g.scale(-1,1);if(t-u.hitT<120)g.filter='brightness(2.4) saturate(.4)';
-        let a='idle',p=0;if(u.cast&&u.cast.big){a='ult';p=(t-u.cast.t0)/u.cast.dur}else if(u.anim){if(u.runP){a='idle';p=0}else{a='attack';p=u.atkP||0}}else if(u.cast){a='attack';p=(t-u.cast.t0)/u.cast.dur}else if(t-u.hitT<400){a='hit';p=(t-u.hitT)/400}else if(u.s.stun>0){a='stun'}
+      const rid=u.hid?(u.side==='a'?u.hid+'_b':u.hid):null;if(rid&&RIG.ok(rid)){g.restore();g.save();g.translate(X,Y-lift);if(u.side==='e')g.scale(-1,1);if(t-u.hitT<120)g.filter='brightness(2.4) saturate(.4)';
+        let a='idle',p=0;
+        if(u.dead){a='die';p=(t-u.deadT)/650}
+        else if(won&&u.side==='a'){a='victory'}
+        else if(u.cast?.big){a='ult';p=(t-u.cast.t0)/u.cast.dur}
+        else if(u.anim){a=u.runP?'run':'attack';p=u.atkP||0}
+        else if(u.cast){a='attack';p=(t-u.cast.t0)/u.cast.dur}
+        else if(t-u.hitT<400){a='hit';p=(t-u.hitT)/400}
+        else if(u.s.stun>0){a='stun'}
         RIG.draw(g,rid,a,t+u.idx*500,Math.min(1,p),0,0,h*1.3,false,u.ri=u.ri||{})}else puppet(g,u.art,w,h,t,u.idx*1.7,lean,u.dead?0:1);g.filter='none';g.restore();g.globalAlpha=1;
       if(!u.dead&&alpha>0&&u.s.shield>0){g.save();g.globalCompositeOperation='lighter';const R=w*.48,gy=u.y+oy,gx=u.x+ox,rt=t/900;g.globalAlpha=alpha*.9;
         const rg2=g.createRadialGradient(gx,gy,R*.2,gx,gy,R);rg2.addColorStop(0,'rgba(90,180,255,0)');rg2.addColorStop(.8,'rgba(110,200,255,.25)');rg2.addColorStop(1,'rgba(170,230,255,.55)');g.fillStyle=rg2;g.beginPath();g.ellipse(gx,gy,R,R*.3,0,0,7);g.fill();
@@ -2617,6 +2676,10 @@ const Battle=(()=>{
 // ===== UI =====
 const $=(s,r=document)=>r.querySelector(s);
 const heroImg=id=>ART.url('h:'+id,()=>ART.hero(HMAP[id]));
+const collectionMini=id=>{
+  const src=RIG.frontUrl(id);
+  return src?`<img class="collection-mini" src="${src}" alt="${HMAP[id].name}">`:`<img src="${heroImg(id)}" alt="">`;
+};
 const spImg=id=>ART.url('s:'+id,()=>ART.sprite(SMAP[id]));
 const monImg=u=>u.hid?heroImg(u.hid):ART.url('m:'+u.mon+u.col,()=>ART.monster(u.mon,u.col));
 const stars=n=>'★'.repeat(n);
@@ -2789,7 +2852,7 @@ function scrHeroes(sc){
       <div class="chips" style="justify-content:flex-start;margin-top:8px">${Object.entries(syn).map(([e,n])=>`<span class="chip" style="border-color:${ELEM[e].c}">${ELEM[e].i} ${ELEM[e].n} ×${n}</span>`).join('')}<span class="chip" style="color:var(--gold)">Синергия: ${mx>=5?'+30%':mx>=4?'+20%':mx>=3?'+10%':'нет'} АТК</span></div>
       <div class="mut">Нажмите на героя, чтобы прокачать или добавить в отряд. 3+ героя одной стихии дают бонус.</div></div>
       <div class="row"><div class="h2 sp">Герои ${owned.length}/${HEROES.length}</div><button class="btn sm gear-all">🎒 Надеть всё</button></div>
-      <div class="grid">${owned.map(id=>heroCard(id)).join('')}${locked.map(d=>`<div class="hc lock" data-r="${d.rar}" style="background:${RAR[d.rar].g}"><img src="${heroImg(d.id)}"><span class="rb">${d.rar}</span><span class="lv">???</span></div>`).join('')}</div>`;
+      <div class="grid">${owned.map(id=>heroCard(id)).join('')}${locked.map(d=>`<div class="hc lock" data-r="${d.rar}" style="background:${RAR[d.rar].g}">${collectionMini(d.id)}<span class="rb">${d.rar}</span><span class="lv">???</span></div>`).join('')}</div>`;
     w.querySelectorAll('.hc[data-id]').forEach(c=>c.onclick=()=>{SFX.click();openHero(c.dataset.id)});
     w.querySelectorAll('.slot').forEach(s=>s.onclick=()=>{const i=+s.dataset.i;if(S.team[i]){S.team[i]=null;refresh()}else toast('Выберите героя ниже')});
     $('.frm',w).onclick=openFormation;$('.auto',w).onclick=()=>{const best=Object.keys(S.heroes).sort((a,b)=>powerOf(heroStats(b))-powerOf(heroStats(a))).slice(0,5);S.team=[0,1,2,3,4].map(i=>best[i]||null);refresh();toast('Отряд собран')};
@@ -2797,7 +2860,7 @@ function scrHeroes(sc){
   };render();window.__rerender=render;
 }
 function heroCard(id){const d=HMAP[id],h=S.heroes[id];const c=lvlCost(h.lvl);const up=(S.gold>=c.gold&&S.exp>=c.exp)||(h.star<MAX_STAR&&h.shards>=STAR_COST[h.star]);
-  return`<div class="hc ${S.team.includes(id)?'inteam':''}" data-id="${id}" data-r="${d.rar}" style="background:${RAR[d.rar].g}"><img src="${heroImg(id)}"><span class="rb" style="color:${RAR[d.rar].c}">${d.rar}</span><span class="el">${ELEM[d.el].i}</span>${up?'<span class="badge">▲</span>':''}<span class="stars">${stars(h.star)}</span><span class="lv">Ур.${h.lvl}</span></div>`}
+  return`<div class="hc ${S.team.includes(id)?'inteam':''}" data-id="${id}" data-r="${d.rar}" style="background:${RAR[d.rar].g}">${collectionMini(id)}<span class="rb" style="color:${RAR[d.rar].c}">${d.rar}</span><span class="el">${ELEM[d.el].i}</span>${up?'<span class="badge">▲</span>':''}<span class="stars">${stars(h.star)}</span><span class="lv">Ур.${h.lvl}</span></div>`}
 function equipBest(id){const h=S.heroes[id];h.gear=h.gear||{};let n=0;GEAR_SLOTS.forEach(s=>{let best=-1;for(let t=5;t>=0;t--)if(S.bag[s.k+t]>0){best=t;break}const cur=h.gear[s.k]??-1;if(best>cur){S.bag[s.k+best]--;if(cur>=0)S.bag[s.k+cur]=(S.bag[s.k+cur]||0)+1;h.gear[s.k]=best;n++}});
   h.imp=h.imp||[null,null];h.chip=h.chip||[null,null,null];const I=inv();const up=(arr,pre)=>{for(let i=0;i<arr.length;i++){let best=-1;for(let t=5;t>=0;t--)if((I[pre+t]||0)>0){best=t;break}const cur=arr[i]??-1;if(best>cur){I[pre+best]--;if(cur>=0)I[pre+cur]=(I[pre+cur]||0)+1;arr[i]=best;n++}}};up(h.imp,'imp');up(h.chip,'chip');return n}
 function ultDesc(u){const st={stun:'оглушение',burn:'горение/проклятие',fragile:'хрупкость'}[u.st];const ch=u.ch?` (${Math.round(u.ch*100)}% — ${st})`:'';
@@ -3380,7 +3443,7 @@ async function boot(){
   Object.entries(ART_FILES.hero).forEach(([id,k])=>ART.override('h:'+id,'art/hero_'+id+'.webp',k));Object.entries(ART_FILES.back||{}).forEach(([id,k])=>ART.override('hb:'+id,'art/hero_'+id+'_back.webp',k));Object.entries(ART_FILES.enemy).forEach(([id,k])=>ART.enemyOverride(id,'art/enemy_'+id+'.webp',k));Object.entries(ART_FILES.sprite).forEach(([id,k])=>ART.override('s:'+id,'art/sprite_'+id+'.webp',k));
   load();if(!S.giftAwk){S.giftAwk=1;S.awk=(S.awk||0)+40;save()}if(!S.giftItems){S.giftItems=1;const I=inv();I.imp0=(I.imp0||0)+2;I.chip0=(I.chip0||0)+3;I.rs0=(I.rs0||0)+10;I.rs1=(I.rs1||0)+10;save()}if(!S.giftSilas){S.giftSilas=1;if(!S.heroes.silas)S.heroes.silas={lvl:10,star:1,shards:0,gear:{}};save()}renderShell();
   HEROES.forEach(h=>{ART.get('h:'+h.id,()=>ART.hero(h));ART.get('hb:'+h.id,()=>ART.heroBack(h))});SPRITES.forEach(s=>ART.get('s:'+s.id,()=>ART.sprite(s)));MON.forEach(m=>[...Object.values(ECOL),'#ff2a4a'].forEach(c=>ART.get('m:'+m.t+c,()=>ART.monster(m.t,c))));
-  try{await Promise.race([Promise.all([ART.ready(),LOC.loadBgs(),...Object.keys(RIG.DEFS).concat(Object.keys(RIG.SPRITES_A)).map(id=>RIG.load(id))]),new Promise(r=>setTimeout(r,4000))])}catch(e){}
+  try{await Promise.race([Promise.all([ART.ready(),LOC.loadBgs(),...HEROES.flatMap(({id})=>[RIG.load(id),RIG.load(id+'_b')])]),new Promise(r=>setTimeout(r,4000))])}catch(e){}
   const L=el(`<div class="loading title2"><canvas class="tcv"></canvas><div class="logo"><b>НЕОНОВЫЙ<br>РАЗЛОМ</b><span class="shn">НЕОНОВЫЙ<br>РАЗЛОМ</span><small>9999 ПРИЗЫВОВ</small></div><button class="btn gold tbtn">Начать</button><div class="ttag">Прототип v1 · сохранение в браузере</div></div>`);
   $('#app').appendChild(L);const stopTitle=TITLE.start($('.tcv',L));
   $('button',L).onclick=()=>{SFX.click();stopTitle();L.remove();go('city');
