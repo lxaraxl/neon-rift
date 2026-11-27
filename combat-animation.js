@@ -1,8 +1,11 @@
 const CombatAnimation = (() => {
   const frameCount = 24;
-  const cellWidth = 112, cellHeight = 120, body = 86, foot = 103, columns = 8;
+  const columns = 8;
+  const heroSize = {width:192,height:204,body:150,foot:175};
+  const creatureSize = {width:144,height:153,body:111,foot:131};
   const groups = {
-    motion: ['idle', 'walk', 'run', 'fly'],
+    rest: ['idle'],
+    motion: ['walk', 'run', 'fly'],
     clash: ['attack', 'block', 'hit'],
     power: ['ult', 'stun', 'victory', 'die'],
   };
@@ -13,18 +16,19 @@ const CombatAnimation = (() => {
   const newerSheets = new Set(['cipher','grom','lyra','pixel','rain','raven','tesla','zhar']);
   const frontLeft = new Set(['cipher']);
   const backLeft = new Set(['cipher','grom','kairos','lyra','mila','nyx','pixel','raven','scrap','tesla','zhar']);
-  const atlas = new Map();
+  const atlas = Object.fromEntries(Object.keys(groups).map(name=>[name,new Map()]));
+  const atlasBudget = {rest:22e6,motion:13e6,clash:30e6,power:16e6};
   const stills = new Map();
   let tintCanvas, tintContext;
 
-  function load(cache, source, limit) {
+  function load(cache, source, limit, weight=1) {
     let entry = cache.get(source);
     if(entry){
       cache.delete(source);
       cache.set(source,entry);
       return entry;
     }
-    entry = {image:null, ready:null};
+    entry = {image:null, ready:null, weight};
     entry.ready = new Promise(resolve=>{
       const image = new Image();
       image.decoding = 'async';
@@ -33,7 +37,12 @@ const CombatAnimation = (() => {
       image.src = source;
     });
     cache.set(source,entry);
-    if(cache.size>limit)cache.delete(cache.keys().next().value);
+    let total=0;
+    for(const item of cache.values())total+=item.weight;
+    for(const [key,item] of cache){
+      if(total<=limit||key===source)break;
+      cache.delete(key);total-=item.weight;
+    }
     return entry;
   }
 
@@ -53,8 +62,17 @@ const CombatAnimation = (() => {
       sign:diagonal?sign:original};
   }
 
+  function size(hero){
+    return hero.startsWith('mob-')||hero.startsWith('companion-')?creatureSize:heroSize;
+  }
   function group(hero,view,name){
-    return load(atlas,`art/combat/${hero}-${view}-${name}.webp`,36);
+    const {width,height}=size(hero);
+    const weight=width*height*frameCount*groups[name].length;
+    return load(atlas[name],`art/combat/${hero}-${view}-${name}.webp?v=hd1`,atlasBudget[name],weight);
+  }
+  function release(){
+    for(const cache of Object.values(atlas))cache.clear();
+    stills.clear();
   }
   function still(hero,view){
     const source = hero.startsWith('mob-') ? `art/enemy_${hero.slice(4)}.webp`
@@ -62,7 +80,7 @@ const CombatAnimation = (() => {
       : miniatureSource(hero,view);
     return load(stills,source,42);
   }
-  function preload(hero,view,names=['motion','clash']){
+  function preload(hero,view,names=['rest']){
     return Promise.all(names.map(name=>group(hero,view,name).ready));
   }
   function frameIndex(action,time,progress){
@@ -71,11 +89,13 @@ const CombatAnimation = (() => {
       : Math.max(0,Math.min(1,progress||0));
     return Math.min(frameCount-1,Math.floor(phase*frameCount));
   }
-  function tintedFrame(image,sx,sy,color){
+  function tintedFrame(image,sx,sy,color,cellWidth,cellHeight){
     if(!tintCanvas){
       tintCanvas=document.createElement('canvas');
-      tintCanvas.width=cellWidth;tintCanvas.height=cellHeight;
       tintContext=tintCanvas.getContext('2d');
+    }
+    if(tintCanvas.width!==cellWidth||tintCanvas.height!==cellHeight){
+      tintCanvas.width=cellWidth;tintCanvas.height=cellHeight;
     }
     const g=tintContext;
     g.clearRect(0,0,cellWidth,cellHeight);
@@ -93,12 +113,13 @@ const CombatAnimation = (() => {
     const clip = clips.get(action==='tap'?'attack':action) || clips.get('idle');
     const image = group(hero,view,clip.group).image;
     if(image){
+      const {width:cellWidth,height:cellHeight,body,foot}=size(hero);
       const frame = frameIndex(action,time,progress);
       const sx = frame%columns*cellWidth;
       const sy = (clip.index*3+Math.floor(frame/columns))*cellHeight;
       const k=height/body;
       if(tint){
-        g.drawImage(tintedFrame(image,sx,sy,tint),-cellWidth*k/2,-foot*k,cellWidth*k,cellHeight*k);
+        g.drawImage(tintedFrame(image,sx,sy,tint,cellWidth,cellHeight),-cellWidth*k/2,-foot*k,cellWidth*k,cellHeight*k);
       }else{
         g.drawImage(image,sx,sy,cellWidth,cellHeight,-cellWidth*k/2,-foot*k,cellWidth*k,cellHeight*k);
       }
@@ -188,5 +209,5 @@ const CombatAnimation = (() => {
     g.restore();
   }
 
-  return {frameCount, frameIndex, facing, preload, draw, effect};
+  return {frameCount, frameIndex, facing, preload, draw, effect, release};
 })();

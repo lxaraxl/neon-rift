@@ -14,10 +14,13 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[1]
 SOURCES = ROOT / 'art/miniatures'
 OUTPUT = ROOT / 'art/combat'
-WIDTH, HEIGHT, BODY, FOOT = 112, 120, 86, 103
+HERO_SIZE = (192, 204, 150, 175)
+CREATURE_SIZE = (144, 153, 111, 131)
+WIDTH, HEIGHT, BODY, FOOT = HERO_SIZE
 FRAMES, COLS = 24, 8
 GROUPS = {
-    'motion': ('idle', 'walk', 'run', 'fly'),
+    'rest': ('idle',),
+    'motion': ('walk', 'run', 'fly'),
     'clash': ('attack', 'block', 'hit'),
     'power': ('ult', 'stun', 'victory', 'die'),
 }
@@ -59,7 +62,7 @@ def center(alpha, lo, hi, fallback):
 def setup(path, hero, view):
     image = Image.open(path).convert('RGBA')
     image = image.crop(image.getchannel('A').getbbox())
-    image.thumbnail((92, BODY), Image.Resampling.LANCZOS)
+    image.thumbnail((round(WIDTH*.82), BODY), Image.Resampling.LANCZOS)
     alpha = np.asarray(image.getchannel('A'))
     foot_center = center(alpha, .94, 1, image.width/2)
     x = round(WIDTH/2-foot_center)
@@ -308,7 +311,10 @@ def render(rgba, weights, offsets, pivots, masks, rotations, fall, direction):
 
 
 def build(job):
+    global WIDTH, HEIGHT, BODY, FOOT, Y, X
     path,hero,view,style,shape=job
+    WIDTH, HEIGHT, BODY, FOOT=HERO_SIZE if shape=='hero' else CREATURE_SIZE
+    Y, X=np.mgrid[:HEIGHT, :WIDTH].astype(np.float32)
     rgba, weights, pivots, masks=setup(path,hero,view)
     direction=-1 if view=='left' or view.startswith('front') and hero in FRONT_LEFT or view.startswith('back') and hero in BACK_LEFT else 1
     for group,actions in GROUPS.items():
@@ -319,7 +325,7 @@ def build(job):
                 offsets,rotations=pose(action,q,style,direction,shape)
                 frame=render(rgba,weights,offsets,pivots,masks,rotations,ease(q) if action=='die' else 0,direction)
                 atlas.paste(frame,(i%COLS*WIDTH,(row*3+i//COLS)*HEIGHT))
-        atlas.save(OUTPUT/f'{hero}-{view}-{group}.webp',quality=77,method=3,alpha_quality=77)
+        atlas.save(OUTPUT/f'{hero}-{view}-{group}.webp',quality=82,method=3,alpha_quality=78)
 
 
 def main():

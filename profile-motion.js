@@ -1,7 +1,8 @@
 const ProfileMotion = (() => {
   const TAU = Math.PI*2;
-  const frames = Array.from({length:24},(_,i)=>{
-    const q=i/24, phase=q*TAU;
+  const fps=60, cycleFrames=168;
+  const frames = Array.from({length:cycleFrames},(_,i)=>{
+    const q=i/cycleFrames, phase=q*TAU;
     return {breath:Math.sin(phase), drift:Math.sin(phase-.6), pulse:(1+Math.cos(phase))/2, q};
   });
   const particles = Array.from({length:22},(_,i)=>({
@@ -12,7 +13,7 @@ const ProfileMotion = (() => {
     seed:i*2.399963,
   }));
 
-  function frameIndex(time){return Math.floor(time/118)%frames.length;}
+  function frameIndex(time){return Math.floor(time*fps/1000)%frames.length;}
 
   function body(g,im,x,y,w,h,frame){
     const count=20, sh=im.height/count;
@@ -53,6 +54,19 @@ const ProfileMotion = (() => {
     g.restore();
   }
 
+  const glows=new Map();
+  function particleGlow(color){
+    if(glows.has(color))return glows.get(color);
+    const tile=document.createElement('canvas');
+    tile.width=tile.height=64;
+    const g=tile.getContext('2d');
+    const gradient=g.createRadialGradient(32,32,0,32,32,32);
+    gradient.addColorStop(0,color+'ac');
+    gradient.addColorStop(1,color+'00');
+    g.fillStyle=gradient;g.fillRect(0,0,64,64);
+    glows.set(color,tile);
+    return tile;
+  }
   function effects(g,x,y,w,h,frame,element,color,seed){
     g.save();
     g.globalCompositeOperation='screen';
@@ -68,11 +82,8 @@ const ProfileMotion = (() => {
       // Keep the face clear. Most glints frame the silhouette instead of crossing it.
       if(Math.abs(px-(x+w*.5))<w*.23&&py<y+h*.47)continue;
 
-      const blur=g.createRadialGradient(px,py,0,px,py,size*3.6);
-      blur.addColorStop(0,color+'ac');blur.addColorStop(1,color+'00');
       g.globalAlpha=alpha*.78;
-      g.fillStyle=blur;
-      g.fillRect(px-size*4,py-size*4,size*8,size*8);
+      g.drawImage(particleGlow(color),px-size*3.6,py-size*3.6,size*7.2,size*7.2);
       g.strokeStyle=color;g.fillStyle='#f3faff';g.lineWidth=Math.max(.7,size*.37);
       g.globalAlpha=alpha*.83;
       if(element==='storm'&&i%3===0){
@@ -111,5 +122,5 @@ const ProfileMotion = (() => {
     }
   }
 
-  return {frameCount:frames.length, frameIndex, draw};
+  return {fps, frameCount:frames.length, frameIndex, draw};
 })();
