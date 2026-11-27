@@ -1909,7 +1909,26 @@ front2:{idle:[0,0,6,7],walk:[1,0,6,10],run:[1,0,6,14],fly:[1,0,6,10],attack:[2,0
     if(P.q.glow){const rg=g.createRadialGradient(x,y-height*.5,0,x,y-height*.5,height*.6);rg.addColorStop(0,`rgba(255,220,120,${.22*P.q.glow})`);rg.addColorStop(1,'rgba(255,220,120,0)');g.save();g.globalCompositeOperation='lighter';g.fillStyle=rg;g.fillRect(x-height,y-height*1.2,height*2,height*1.4);g.restore()}
     return true;
   }
-  return{DEFS,SPRITES_A,load,has,ok,draw,pose};
+  // Unified miniatures: the collection and both combat sides share the same character art.
+  const MINI_IDS=new Set(['astra','bastion','cipher','glitch','grom','kairos','lyra','mila','murr','nyx','phoenix','pixel','pyro','rain','raven','scrap','silas','sol','tesla','volta','zhar']);
+  const MINI={}, MINI_PENDING={};
+  function miniLoad(id){
+    if(!MINI_IDS.has(id.replace(/_b$/,'')))return load(id);
+    if(MINI_PENDING[id])return MINI_PENDING[id];
+    return MINI_PENDING[id]=new Promise(resolve=>{const im=new Image();im.onload=()=>{MINI[id]=im;resolve()};im.onerror=()=>{Promise.resolve(load(id)).then(resolve,resolve)};im.src='art/hero_'+id.replace(/_b$/,'_back')+'.webp'});
+  }
+  function miniDraw(g,id,anim,t,p,x,y,height,flip,inst){
+    const im=MINI[id];if(!im)return draw(g,id,anim,t,p,x,y,height,flip,inst);
+    const phase=t/1000, q=Math.max(0,Math.min(1,p||0)), pulse=Math.sin(q*Math.PI);
+    const moving=['walk','run','fly'].includes(anim), attack=['attack','ult','tap'].includes(anim);
+    const bob=moving?Math.abs(Math.sin(phase*9))*height*.035:attack?pulse*height*.055:0;
+    const breath=Math.sin(phase*2.3)*.014, w=height*im.naturalWidth/im.naturalHeight;
+    g.save();g.translate(x,y-bob);g.scale((flip?-1:1)*(1-breath*.5),1+breath);
+    g.rotate(attack?pulse*.09:anim==='hit'?-pulse*.12:Math.sin(phase*1.4)*.012);
+    if(anim==='die')g.globalAlpha*=1-q;
+    g.drawImage(im,-w/2,-height,w,height);g.restore();return true;
+  }
+  return{DEFS,SPRITES_A,load:miniLoad,has,ok:id=>!!MINI[id]||ok(id),draw:miniDraw,pose};
 })();
 // ===== DATA =====
 
@@ -2818,13 +2837,13 @@ function bigLoop(cv,id){const g=cv.getContext('2d');const ec=ELEM[HMAP[id].el].c
   const fit=()=>{const r=cv.getBoundingClientRect(),D=Math.min(2,devicePixelRatio||1);cv.width=Math.round(r.width*D);cv.height=Math.round(r.height*D)};fit();
   const loop=t=>{if(!cv.isConnected)return;raf=requestAnimationFrame(loop);const W=cv.width,H=cv.height;g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,W,H);
     const im=bigArt(id);const iw=im.width||im.naturalWidth,ih=im.height||im.naturalHeight;if(!iw)return;
-    const sc=Math.min(W*.98/iw,H*.97/ih),dw=iw*sc,dh=ih*sc,x0=(W-dw)/2,y0=H-dh-H*.015+Math.sin(t/1400)*H*.006;
+    const sc=Math.min(W*.98/iw,H*.97/ih),dw=iw*sc,dh=ih*sc,x0=(W-dw)/2,y0=H-dh-H*.015;
     // aura
     g.save();g.globalCompositeOperation='lighter';const rg=g.createRadialGradient(W/2,y0+dh*.45,0,W/2,y0+dh*.45,dw*.62);rg.addColorStop(0,ec+'55');rg.addColorStop(1,ec+'00');g.fillStyle=rg;g.fillRect(0,0,W,H);g.restore();
     // shadow
     g.fillStyle='rgba(20,8,40,.35)';g.beginPath();g.ellipse(W/2,H-H*.02,dw*.32,dh*.025,0,0,7);g.fill();
     // sliced warp: feet fixed, upper body breathes and sways (hair, cloak)
-    const N=48,br=Math.sin(t/900),sw=Math.sin(t/1700),sw2=Math.sin(t/620);
+    const N=48,br=Math.sin(t/1250),sw=Math.sin(t/2100),sw2=Math.sin(t/950);
     for(let i=0;i<N;i++){const v0=i/N,v1=(i+1)/N,vt=1-v0;const sy=ih*v0,sh=ih/N+1;
       const breathe=1+.012*br*Math.max(0,Math.min(1,(vt-.25)*2.2));const yy=y0+dh*(1-(1-v0)*breathe);
       const dx=(sw*.012*Math.pow(vt,1.6)+sw2*.004*Math.pow(Math.max(0,vt-.55),1.2))*dw;
