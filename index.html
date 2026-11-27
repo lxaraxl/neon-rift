@@ -644,7 +644,31 @@ button{font:inherit;color:inherit;border:0;cursor:pointer;background:none}
 .b-result.win .r-throne .rays{opacity:.5}
 .b-result.lose{background:linear-gradient(rgba(10,6,30,.25),rgba(10,6,30,.35) 45%,rgba(10,6,30,.65)),url(art/bg_result_lose.webp) center top/cover no-repeat!important}
 .gart{display:inline-block;background-repeat:no-repeat;filter:drop-shadow(0 2px 2px rgba(0,0,0,.5))}
-</style></head><body><div id="app"></div><script src="miniatures.js"></script><script src="combat-animation.js?v=hd1"></script><script src="profile-motion.js?v=60"></script><script src="title-chase.js"></script><script>
+
+.camp-rewards{position:absolute;left:12px;right:12px;bottom:calc(var(--camp-nav,76px) + 10px);z-index:6!important;padding:10px 12px;border:1px solid #edbc65;border-radius:14px;background:linear-gradient(160deg,#2b1933f5,#191022f7);color:#fff0d3;box-shadow:0 4px 15px #160b1c66}
+.camp-rewards-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.camp-rewards h2{margin:0;color:#ffe3ac;font:800 15px Manrope,system-ui}
+.camp-state,.camp-timer small{color:#dec9df;font:700 11px Manrope,system-ui}
+.camp-state i{display:inline-block;width:6px;height:6px;margin-right:3px;border-radius:50%;background:#91efa6;box-shadow:0 0 6px #91efa6b0}
+.camp-timer{font:800 13px Manrope,system-ui;white-space:nowrap}
+.camp-progress{display:block;width:100%;height:5px;margin:7px 0;border:0;border-radius:6px;overflow:hidden;appearance:none;background:#58425d;accent-color:#f4bd72}
+.camp-progress::-webkit-progress-bar{background:#58425d}
+.camp-progress::-webkit-progress-value{background:#f4bd72}
+.camp-progress::-moz-progress-bar{background:#f4bd72}
+.camp-payout{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin:7px 0}
+.camp-payout>span{display:flex;align-items:center;justify-content:center;gap:3px;min-height:27px;border-radius:7px;background:#fff3daf0;color:#502c1b;font:800 12px Manrope,system-ui}
+.camp-payout .ico{width:17px!important;height:17px!important;transform:none!important}
+.camp-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.camp-actions .btn{min-height:39px;padding:5px 6px!important}
+.camp-actions small{display:block;font:800 10px Manrope,system-ui}
+.hero-filters{display:flex;justify-content:space-between;gap:4px;margin:5px 0 10px}
+.hero-filters button{flex:1;padding:6px 2px;min-height:35px;font:800 11px Manrope,system-ui;border-radius:8px;border:1px solid #daa057;background:#2a173f;color:#fff3d7;white-space:nowrap}
+.hero-filters button[aria-pressed=true]{background:#ffdda3;color:#482215;border-color:#ffeac5}
+.hero-filters .eli{margin-right:2px}
+.hd2 canvas.big{animation:profile-reveal .34s ease-out both}
+@keyframes profile-reveal{from{opacity:.2}to{opacity:1}}
+@media(prefers-reduced-motion:reduce){.hd2 canvas.big{animation:none}}
+</style></head><body><div id="app"></div><script src="miniatures.js"></script><script src="combat-animation.js?v=hd1"></script><script src="profile-motion.js?v=camp"></script><script src="title-chase.js"></script><script src="camp-patrol.js"></script><script>
 // ===== ICONS: hand-made game icons (SVG), no emoji =====
 const ICON=(()=>{
   const G=(id,a,b)=>`<linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>`;
@@ -2304,7 +2328,7 @@ function vipLevel(){const t=[0,100,500,1500,4000,9000,18000,35000,60000,100000];
 
 // AFK
 function afkRates(){const s=S.stage,v=1+vipLevel()*.05;return{gold:(40+s*14)*v,exp:(30+s*11)*v,gems:(s>5?0.25:0.1)*v}} // per minute
-function afkPending(){const mins=Math.min((Date.now()-S.afkT)/60000,12*60);const r=afkRates();return{mins,gold:r.gold*mins,exp:r.exp*mins,gems:Math.floor(r.gems*mins),gear:Math.floor(mins/45)}}
+function afkPending(){const mins=Math.max(0,Math.min((Date.now()-S.afkT)/60000,12*60));const r=afkRates();return{mins,gold:r.gold*mins,exp:r.exp*mins,gems:Math.floor(r.gems*mins),gear:Math.floor(mins/45)}}
 function rollGear(stage){const keys=GEAR_SLOTS.map(s=>s.k);const base=Math.min(5,Math.floor(stage/14));let t=base;const r=Math.random();if(r<.15&&t<5)t++;else if(r>.8&&t>0)t--;return pick(keys)+t}
 
 // ---------- enemies ----------
@@ -2934,68 +2958,65 @@ async function startStage(){
 
 // ---------- CAMP ----------
 function scrCamp(sc){
-  const team=S.team.filter(Boolean);
-  const wrap=el(`<div class="scene"><canvas></canvas></div>`);sc.appendChild(wrap);const cv=$('canvas',wrap);
-  const rr=sc.getBoundingClientRect();const D=Math.min(1.6,window.devicePixelRatio||1);const W=Math.round((rr.width||400)*D),H=Math.round((rr.height||800)*D);cv.width=W;cv.height=H;const g=PERF.fast(cv.getContext('2d'));const k=W/400;
-  const painted=LOC.BGIMG.camp;const base=painted?LOC.fromImage('camp',W,H,{n1:'#ff9a3a',n2:'#ffd84a'},'forest'):LOC.forest(W,H,Math.round(H*.3));if(!painted){const bg=base.getContext('2d');
-    // warm sunset tint
-    const tg=bg.createLinearGradient(0,0,0,H);tg.addColorStop(0,'rgba(255,140,80,.28)');tg.addColorStop(.5,'rgba(255,120,90,.12)');tg.addColorStop(1,'rgba(60,20,40,.25)');bg.fillStyle=tg;bg.fillRect(0,0,W,H);
-    const fx=W/2,fy=H*.47;
-    // trodden dirt circle
-    const dg=bg.createRadialGradient(fx,fy,0,fx,fy,W*.42);dg.addColorStop(0,'rgba(150,100,60,.85)');dg.addColorStop(.7,'rgba(130,90,50,.45)');dg.addColorStop(1,'rgba(0,0,0,0)');bg.save();bg.translate(fx,fy);bg.scale(1,.42);bg.translate(-fx,-fy);bg.fillStyle=dg;bg.beginPath();bg.arc(fx,fy,W*.42,0,7);bg.fill();bg.restore();
-    // tents
-    [[W*.16,H*.36,'#e06a4a'],[W*.84,H*.355,'#4a8ae0']].forEach(([x,y,col])=>{const w=70*k,h=62*k;bg.fillStyle=ART.shade(col,-.25);bg.beginPath();bg.moveTo(x-w/2,y);bg.lineTo(x,y-h);bg.lineTo(x+w/2,y);bg.fill();bg.fillStyle=col;bg.beginPath();bg.moveTo(x-w/2,y);bg.lineTo(x,y-h);bg.lineTo(x+w*.1,y);bg.fill();bg.fillStyle='#3a1a10';bg.beginPath();bg.moveTo(x-10*k,y);bg.lineTo(x,y-30*k);bg.lineTo(x+10*k,y);bg.fill();bg.fillStyle='#ffd84a';bg.fillRect(x-1*k,y-h-14*k,2*k,14*k);bg.fillStyle=col;bg.beginPath();bg.moveTo(x+1*k,y-h-14*k);bg.lineTo(x+14*k,y-h-10*k);bg.lineTo(x+1*k,y-h-6*k);bg.fill()});
-    // log benches
-    [[fx-92*k,fy-26*k,-.15],[fx+92*k,fy-26*k,.15],[fx-110*k,fy+30*k,.3],[fx+110*k,fy+30*k,-.3]].forEach(([x,y,r])=>{bg.save();bg.translate(x,y);bg.rotate(r);bg.fillStyle='#7a4a24';bg.beginPath();bg.roundRect(-34*k,-7*k,68*k,14*k,7*k);bg.fill();bg.fillStyle='#c8905a';bg.beginPath();bg.ellipse(34*k,0,5*k,7*k,0,0,7);bg.fill();bg.restore()});
-    // fire pit stones
-    for(let i=0;i<12;i++){const a=i/12*Math.PI*2;bg.fillStyle=i%2?'#8a8a9a':'#6a6a7a';bg.beginPath();bg.ellipse(fx+Math.cos(a)*30*k,fy+Math.sin(a)*11*k,8*k,5*k,0,0,7);bg.fill()}
-    bg.fillStyle='#4a2a14';[[-.4],[.4]].forEach(([r])=>{bg.save();bg.translate(fx,fy-2*k);bg.rotate(r);bg.beginPath();bg.roundRect(-26*k,-4*k,52*k,8*k,4*k);bg.fill();bg.restore()});
-    // pot on tripod & backpacks
-    bg.strokeStyle='#3a2a1a';bg.lineWidth=3*k;bg.beginPath();bg.moveTo(fx-30*k,fy+4*k);bg.lineTo(fx,fy-60*k);bg.lineTo(fx+30*k,fy+4*k);bg.stroke();
-  }
-  const st={};
-  // seats around fire (avoid front-center so the fire is visible)
-  const seats=painted?[[-.3,.06,.95],[.3,.06,.95],[-.17,.12,1.05],[.17,.12,1.05],[0,.19,1.1]]:[[-.24,-.075,.85],[.24,-.075,.85],[-.1,-.13,.72],[.1,-.13,.72],[-.31,.06,1]];
-  const loop=t=>{g.setTransform(1,0,0,1,0,0);g.drawImage(base,0,0);const fx=W/2,fy=H*(painted?.39:.47);
-    const order=team.map((id,i)=>({id,i,s:seats[i]})).sort((a,b)=>a.s[1]-b.s[1]);
-    const drawHero=o=>{const img=ART.get('h:'+o.id,()=>ART.hero(HMAP[o.id]));const x=fx+o.s[0]*W,y=fy+o.s[1]*H;const hh=96*k*o.s[2],ww=hh*(img.width/img.height||.75);const br=Math.sin(t/600+o.i);
-      g.globalAlpha=.35;g.fillStyle='#000';g.beginPath();g.ellipse(x,y,ww*.3,ww*.07,0,0,7);g.fill();g.globalAlpha=1;
-      g.save();g.translate(x,y);if(o.s[0]>0)g.scale(-1,1);if(RIG.ok(o.id)){RIG.draw(g,o.id,'idle',t+o.i*700,0,0,0,hh*1.05,false,(st.ri=st.ri||{})[o.id]=(st.ri[o.id]||{}))}else{g.scale(1+br*.01,1-br*.015);g.drawImage(img,-ww/2,-hh,ww,hh)}
-      // firelight rim
-      g.restore();g.globalAlpha=1};
-    order.filter(o=>o.s[1]<0).forEach(drawHero);
-    // fire
-    g.save();g.globalCompositeOperation='lighter';glowCircle(g,fx,fy-20*k,(190+Math.sin(t/110)*14)*k,'#ff9a3a',painted?.22:.32);
-    st.fl=st.fl||[];for(let i=0;i<(painted?2:5);i++)st.fl.push({x:fx+rnd(-16,16)*k,y:fy-2*k,vx:rnd(-.3,.3)*k,vy:-rnd(1.6,3.4)*k,t0:t,l:rnd(500,900),r:rnd(9,18)*k});
-    st.fl=st.fl.filter(f=>{const p=(t-f.t0)/f.l;if(p>1)return false;f.x+=f.vx+(fx-f.x)*.025;f.y+=f.vy;const c=p<.3?'#fff4b0':p<.6?'#ffa020':'#ff3a1a';glowCircle(g,f.x,f.y,f.r*(1-p*.6),c,1-p);return true});
-    st.sp=st.sp||[];if(Math.random()<.35)st.sp.push({x:fx+rnd(-8,8)*k,y:fy-30*k,v:rnd(1,2.6)*k,t0:t});st.sp=st.sp.filter(p=>{p.y-=p.v;p.x+=Math.sin(p.y/(12*k))*1.2*k;glowCircle(g,p.x,p.y,3*k,'#ffd84a',.9);return p.y>fy-300*k});
-    g.restore();
-    order.filter(o=>o.s[1]>=0).forEach(drawHero);
-    LOC.ambient('forest',st,W,H,t,g);
-    sceneRAF=requestAnimationFrame(loop)};sceneRAF=requestAnimationFrame(loop);
-  const p=el(`<div style="position:absolute;left:10px;right:10px;bottom:84px;z-index:6"></div>`);sc.appendChild(p);
-  const render=()=>{const a=afkPending(),r=afkRates();const h=Math.floor(a.mins/60),m=Math.floor(a.mins%60);
-    p.innerHTML=`<div class="card" style="background:rgba(15,8,30,.88)"><div class="row"><div class="sp"><div class="title-neon" style="font-size:15px">Лагерь Курьера</div><div class="mut">Время АФК: <b style="color:var(--ok)">${h}ч ${m}м</b> / 12ч</div></div><div class="mut" style="text-align:right">🪙 ${fmt(r.gold)}/мин<br>📘 ${fmt(r.exp)}/мин</div></div>
-    <div class="rws" style="margin:8px 0">${[['gold',a.gold],['exp',a.exp],['gems',a.gems],['gear',a.gear]].map(([k,v])=>`<div class="rw" style="width:70px"><span>${RES[k].i}</span><b>${fmt(v)}</b></div>`).join('')}</div>
-    <div class="row"><button class="btn cyan sp raid">⚡ Рейд 2ч · ${S.daily.raids>0?'free ×'+S.daily.raids:'50💎'}</button><button class="btn gold sp claim">Собрать</button></div></div>`;
+  const team=S.team.filter(Boolean).map(id=>({...HMAP[id],color:ELEM[HMAP[id].el].c}));
+  const wrap=el('<div class="scene"><canvas aria-hidden="true"></canvas></div>');
+  const p=el('<section class="camp-rewards" aria-label="Доход лагеря"></section>');
+  sc.append(wrap,p);
+  const cv=$('canvas',wrap),patrol=CampPatrol.create(cv,team,S.stage,p);
+  const motion=matchMedia('(prefers-reduced-motion: reduce)');
+  let last=-Infinity,navHeight=0;
+  const loop=t=>{
+    if(!cv.isConnected)return;
+    if(t-last>=(motion.matches?160:16)&&!$('.hd2')){
+      const height=$('#nav').offsetHeight;
+      if(height!==navHeight){
+        navHeight=height;
+        p.style.setProperty('--camp-nav',height+'px');
+      }
+      patrol.draw(t);last=t;
+    }
+    sceneRAF=requestAnimationFrame(loop);
+  };
+  sceneRAF=requestAnimationFrame(loop);
+  cv.addEventListener('click',event=>{
+    const id=patrol.heroAt(event);
+    if(id&&!$('.hd2')){SFX.click();openHero(id)}
+  });
+  const render=()=>{
+    const a=afkPending(),r=afkRates(),h=Math.floor(a.mins/60),m=Math.floor(a.mins%60);
+    p.innerHTML=`<div class="camp-rewards-head"><div><h2>Лагерь Курьера</h2>
+      <span class="camp-state">${team.length?'<i></i> Отряд на патруле':'Соберите отряд в разделе «Герои»'}</span></div>
+      <span class="camp-timer">${h}ч ${m}м <small>/ 12ч</small></span></div>
+      <progress class="camp-progress" max="720" value="${a.mins}" aria-label="Время накопления"></progress>
+      <div class="camp-payout">${[['gold',a.gold],['exp',a.exp],['gems',a.gems],['gear',a.gear]].map(([k,v])=>`<span title="${RES[k].n}">${RES[k].i}<b>${fmt(v)}</b></span>`).join('')}</div>
+      <div class="camp-actions"><button class="btn cyan raid">Рейд 2ч <small>${S.daily.raids>0?'Бесплатно ×'+S.daily.raids:'50 алмазов'}</small></button>
+      <button class="btn gold claim">Собрать <small>${fmt(r.gold)} золота/мин</small></button></div>`;
     $('.claim',p).onclick=()=>{const a=afkPending();if(a.mins<1){toast('Пока нечего собирать');return}const gear=[];for(let i=0;i<a.gear;i++)gear.push(rollGear(S.stage));S.afkT=Date.now();const l=grant({gold:a.gold,exp:a.exp,gems:a.gems});if(gear.length){grant({gear});l.push({k:'gear',v:gear.length})}quest('afk');showRewards(l,'Доход АФК');refresh()};
     $('.raid',p).onclick=()=>{if(S.daily.raids>0)S.daily.raids--;else if(S.gems>=50)S.gems-=50;else{toast('Не хватает алмазов');return}const r=afkRates();const l=grant({gold:r.gold*120,exp:r.exp*120,gems:Math.floor(r.gems*120)});quest('afk');showRewards(l,'Быстрый рейд · 2 часа');refresh()};
-  };render();window.__rerender=render;const iv=setInterval(()=>{if(curTab!=='camp'||!p.isConnected){clearInterval(iv);return}render()},30000);
+  };
+  render();
+  window.__rerender=render;
+  const iv=setInterval(()=>{if(!p.isConnected)clearInterval(iv);else render()},30000);
 }
 
 // ---------- HEROES ----------
 function scrHeroes(sc){
+  let element='all';
   const w=el(`<div class="scroll"></div>`);sc.appendChild(w);
   const render=()=>{
     const owned=Object.keys(S.heroes).sort((a,b)=>powerOf(heroStats(b))-powerOf(heroStats(a)));
-    const locked=HEROES.filter(h=>!S.heroes[h.id]);const syn={};S.team.filter(Boolean).forEach(id=>{const e=HMAP[id].el;syn[e]=(syn[e]||0)+1});const mx=Math.max(0,...Object.values(syn));
+    const matches=d=>element==='all'||d.el===element;
+    const visible=owned.filter(id=>matches(HMAP[id]));
+    const locked=HEROES.filter(h=>!S.heroes[h.id]&&matches(h));const syn={};S.team.filter(Boolean).forEach(id=>{const e=HMAP[id].el;syn[e]=(syn[e]||0)+1});const mx=Math.max(0,...Object.values(syn));
     w.innerHTML=`<div class="card"><div class="row" style="margin-bottom:8px"><b class="sp">Отряд</b><span class="mut">⚔ ${fmt(teamPower())}</span><button class="btn sm gold frm">Строй</button><button class="btn sm cyan auto" style="margin-left:6px">Авто</button></div>
       <div class="team">${[0,1,2,3,4].map(i=>{const id=S.team[i];return id?`<div class="slot" data-i="${i}" style="border:2px solid ${RAR[HMAP[id].rar].c};border-style:solid"><img src="${heroImg(id)}"><span class="x">✕</span></div>`:`<div class="slot" data-i="${i}">+</div>`}).join('')}</div>
       <div class="chips" style="justify-content:flex-start;margin-top:8px">${Object.entries(syn).map(([e,n])=>`<span class="chip" style="border-color:${ELEM[e].c}">${ELEM[e].i} ${ELEM[e].n} ×${n}</span>`).join('')}<span class="chip" style="color:var(--gold)">Синергия: ${mx>=5?'+30%':mx>=4?'+20%':mx>=3?'+10%':'нет'} АТК</span></div>
       <div class="mut">Нажмите на героя, чтобы прокачать или добавить в отряд. 3+ героя одной стихии дают бонус.</div></div>
       <div class="row"><div class="h2 sp">Герои ${owned.length}/${HEROES.length}</div><button class="btn sm gear-all">🎒 Надеть всё</button></div>
-      <div class="grid">${owned.map(id=>heroCard(id)).join('')}${locked.map(d=>`<div class="hc lock" data-r="${d.rar}" style="background:${RAR[d.rar].g}">${collectionMini(d.id)}<span class="rb">${d.rar}</span><span class="lv">???</span></div>`).join('')}</div>`;
-    w.querySelectorAll('.hc[data-id]').forEach(c=>c.onclick=()=>{SFX.click();openHero(c.dataset.id)});
+      <div class="hero-filters" role="group" aria-label="Стихия героев">${[['all','Все'],...Object.entries(ELEM).map(([id,d])=>[id,d.n])].map(([id,label])=>`<button type="button" data-element="${id}" aria-pressed="${id===element}">${id==='all'?'':ELEM[id].i}${label}</button>`).join('')}</div>
+      <div class="grid">${visible.map(id=>heroCard(id)).join('')}${locked.map(d=>`<div class="hc lock" data-r="${d.rar}" style="background:${RAR[d.rar].g}">${collectionMini(d.id)}<span class="rb">${d.rar}</span><span class="lv">???</span></div>`).join('')}</div>`;
+    w.querySelectorAll('[data-element]').forEach(b=>b.onclick=()=>{element=b.dataset.element;render();$('[data-element="'+element+'"]',w).focus({preventScroll:true})});
+    w.querySelectorAll('.hc[data-id]').forEach(c=>c.onclick=()=>{SFX.click();openHero(c.dataset.id,element==='all'?null:visible)});
     w.querySelectorAll('.slot').forEach(s=>s.onclick=()=>{const i=+s.dataset.i;if(S.team[i]){S.team[i]=null;refresh()}else toast('Выберите героя ниже')});
     $('.frm',w).onclick=openFormation;$('.auto',w).onclick=()=>{const best=Object.keys(S.heroes).sort((a,b)=>powerOf(heroStats(b))-powerOf(heroStats(a))).slice(0,5);S.team=[0,1,2,3,4].map(i=>best[i]||null);refresh();toast('Отряд собран')};
     $('.gear-all',w).onclick=()=>{let n=0;S.team.filter(Boolean).forEach(id=>n+=equipBest(id));refresh();toast(n?`Надето предметов: ${n}`:'Нет лучшего снаряжения')};
@@ -3068,7 +3089,7 @@ function bigLoop(cv,id){
   requestAnimationFrame(loop);
 }
 function heroList(){return Object.keys(S.heroes).sort((a,b)=>powerOf(heroStats(b))-powerOf(heroStats(a)))}
-function openHero(id){
+function openHero(id,selection=null){
   const d=HMAP[id];const ec=ELEM[d.el].c;
   const o=el(`<div class="hd2" style="--ec:${ec};--rc:${RAR[d.rar].c}"></div>`);$('#app').appendChild(o);
   const RN={UR:'Миф',SSR:'Легенда',SR:'Эпик',R:'Редкий'};
@@ -3103,11 +3124,11 @@ function openHero(id){
     <div class="hd2-pop"></div>`;
     bigLoop($('.big',o),id);rigShow(o,id);
     $('.hd2-back',o).onclick=()=>{o.remove();refresh()};
-    const L=heroList(),ix=L.indexOf(id);$('.hd2-arr.l',o).onclick=()=>{SFX.click();o.remove();openHero(L[(ix-1+L.length)%L.length])};$('.hd2-arr.r',o).onclick=()=>{SFX.click();o.remove();openHero(L[(ix+1)%L.length])};
+    const L=selection||heroList(),ix=L.indexOf(id);$('.hd2-arr.l',o).onclick=()=>{SFX.click();o.remove();openHero(L[(ix-1+L.length)%L.length],selection)};$('.hd2-arr.r',o).onclick=()=>{SFX.click();o.remove();openHero(L[(ix+1)%L.length],selection)};
     $('.l1',o).onclick=()=>lvl(1);$('.l10',o).onclick=()=>lvl(batch);
     o.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{SFX.click();pop(b.dataset.p)});
     // swipe left/right to switch hero
-    let sx=null;o.addEventListener('touchstart',e=>{sx=e.touches[0].clientX},{passive:true});o.addEventListener('touchend',e=>{if(sx==null)return;const dx=e.changedTouches[0].clientX-sx;sx=null;if(Math.abs(dx)>70&&!$('.hd2-pop.on',o)){o.remove();openHero(L[(ix+(dx<0?1:-1)+L.length)%L.length])}});
+    let sx=null;o.addEventListener('touchstart',e=>{sx=e.touches[0].clientX},{passive:true});o.addEventListener('touchend',e=>{if(sx==null)return;const dx=e.changedTouches[0].clientX-sx;sx=null;if(Math.abs(dx)>70&&!$('.hd2-pop.on',o)){o.remove();openHero(L[(ix+(dx<0?1:-1)+L.length)%L.length],selection)}});
   };
   const pop=k=>{const h=S.heroes[id],P=$('.hd2-pop',o);const need=STAR_COST[h.star]||0,inT=S.team.includes(id);
     if(k==='team'){const i=S.team.indexOf(id);if(i>=0)S.team[i]=null;else{const e=S.team.indexOf(null);if(e<0){toast('Отряд полон — уберите кого-то');return}S.team[e]=id}save();render();renderTop();toast(S.team.includes(id)?'Добавлен в отряд':'Убран из отряда');return}
