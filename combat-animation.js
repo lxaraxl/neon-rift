@@ -1,89 +1,192 @@
 const CombatAnimation = (() => {
   const frameCount = 24;
-  const wave = q => Math.sin(Math.PI * 2 * q);
-  const arc = q => Math.sin(Math.PI * q);
-  const clamp = q => Math.max(0, Math.min(1, q));
-  const ease = q => { q = clamp(q); return q*q*(3-2*q); };
-  // Each pose is [x, y, rotation, width, height, upper-body bend, effect intensity].
-  const actions = {
-    idle: { period: 2200, pose: q => [0,0,wave(q)*.012,1-wave(q)*.008,1+wave(q)*.016,wave(q)*.025,0] },
-    walk: { period: 780, pose: q => [wave(q)*.016,-(wave(q)**2)*.035,wave(q)*.038,1,1,wave(q)*.034,0] },
-    run: { period: 600, pose: q => [wave(q)*.018,-(wave(q)**2)*.074,.075+wave(q)*.045,1,1.02,.055+wave(q)*.035,0] },
-    fly: { period: 1200, pose: q => [wave(q)*.025,-.07-wave(q)*.055,wave(q)*.035,1,1,wave(q)*.065,0] },
-    attack: { pose(q, style) {
-      const wind = arc(clamp(q/.27));
-      const strike = ease((q-.19)/.23)*(1-ease((q-.42)/.58));
-      const drive = style==='war'||style==='tank' ? 1 : .55;
-      return [drive*(.19*strike-.075*wind),-.055*strike,drive*(.19*strike-.14*wind),
-        1+.075*strike,1-.075*wind+.035*strike,.13*strike-.08*wind,strike];
-    } },
-    ult: { pose(q, style) {
-      const surge = arc(q), release = ease((q-.29)/.29)*(1-ease((q-.69)/.31));
-      const weight = style==='tank' ? .65 : 1;
-      return [.07*release,-surge*.17*weight,.12*release-.075*surge,
-        1+.09*release,1+.1*surge,.16*release-.06*surge,release];
-    } },
-    block: { pose(q) {
-      const brace = ease(q/.18)*(1-ease((q-.49)/.51));
-      return [-.09*brace,.025*brace,-.14*brace,1+.09*brace,1-.12*brace,-.12*brace,brace];
-    } },
-    hit: { pose(q) {
-      const recoil = ease(q/.16)*(1-ease((q-.16)/.84));
-      return [-.15*recoil,-.034*recoil,-.26*recoil,1+.05*recoil,1-.08*recoil,-.1*recoil,0];
-    } },
-    stun: { period: 880, pose: q => [wave(q)*.032,0,wave(q)*.072,1,1-wave(q)*.023,wave(q)*.095,0] },
-    victory: { period: 960, pose: q => [0,-Math.max(0,wave(q))*.15,wave(q)*.055,1-wave(q)*.025,1+wave(q)*.04,wave(q)*.07,0] },
-    die: { pose: q => [-.11*ease(q),.09*q,-1.24*ease(q),1+.06*q,1-.11*q,-.12*q,0] },
+  const cellWidth = 112, cellHeight = 120, body = 86, foot = 103, columns = 8;
+  const groups = {
+    motion: ['idle', 'walk', 'run', 'fly'],
+    clash: ['attack', 'block', 'hit'],
+    power: ['ult', 'stun', 'victory', 'die'],
   };
-  const clips = Object.fromEntries(['war','tank','arch','mage','sup'].map(style=>[
-    style, Object.fromEntries(Object.entries(actions).map(([name,{period,pose}])=>[
-      name, Array.from({length:frameCount},(_,i)=>pose(i/(period?frameCount:frameCount-1),style))
-    ]))
-  ]));
-  function frame(action, style, time, progress) {
-    const name = action==='tap' ? 'attack' : Object.hasOwn(actions,action) ? action : 'idle';
-    const period = actions[name].period;
-    const phase = period ? ((time%period)+period)%period/period : clamp(progress||0);
-    return (clips[style]||clips.war)[name][Math.min(frameCount-1,Math.floor(phase*frameCount))];
-  }
-  function draw(g, im, height, pose, action, color) {
-    const [dx,dy,angle,sx,sy,bend,effect] = pose;
-    const width = height*im.naturalWidth/im.naturalHeight;
-    g.translate(dx*height,dy*height);
-    g.rotate(angle);
-    g.scale(sx,sy);
+  const periods = {idle:2400, walk:850, run:520, fly:1200, stun:840, victory:1080};
+  const clips = new Map(Object.entries(groups).flatMap(([group,list]) =>
+    list.map((action,index)=>[action,{group,index,period:periods[action]}])
+  ));
+  const newerSheets = new Set(['cipher','grom','lyra','pixel','rain','raven','tesla','zhar']);
+  const frontLeft = new Set(['cipher']);
+  const backLeft = new Set(['cipher','grom','kairos','lyra','mila','nyx','pixel','raven','scrap','tesla','zhar']);
+  const atlas = new Map();
+  const stills = new Map();
+  let tintCanvas, tintContext;
 
-    // Local shear varies from the grounded feet to the head and cape.
-    g.translate(0,-height);
-    const bands = 5;
-    const sourceHeight = im.naturalHeight/bands;
-    const bandHeight = height/bands;
-    for(let i=0;i<bands;i++){
-      const top = (1-i/bands)**2 * bend*height;
-      const bottom = (1-(i+1)/bands)**2 * bend*height;
-      g.save();
-      g.transform(1,0,(bottom-top)/bandHeight,1,top,0);
-      const overlap = i<bands-1 ? .65 : 0;
-      g.drawImage(im,0,i*sourceHeight,im.naturalWidth,sourceHeight+overlap,-width/2,0,width,bandHeight*(1+overlap/sourceHeight));
-      g.restore();
-      g.translate(0,bandHeight);
+  function load(cache, source, limit) {
+    let entry = cache.get(source);
+    if(entry){
+      cache.delete(source);
+      cache.set(source,entry);
+      return entry;
     }
+    entry = {image:null, ready:null};
+    entry.ready = new Promise(resolve=>{
+      const image = new Image();
+      image.decoding = 'async';
+      image.onload = ()=>{entry.image=image;resolve(image);};
+      image.onerror = ()=>resolve(null);
+      image.src = source;
+    });
+    cache.set(source,entry);
+    if(cache.size>limit)cache.delete(cache.keys().next().value);
+    return entry;
+  }
 
-    if(effect>.06&&action==='block'){
-      g.globalAlpha*=effect*.85;
-      g.strokeStyle='#b9edff';
-      g.lineWidth=height*.018;
-      g.beginPath();
-      g.ellipse(width*.24,height*.43,width*.36,height*.37,-.16,-1.48,1.36);
-      g.stroke();
-    }else if(effect>.1&&action==='ult'){
-      g.globalAlpha*=effect*.68;
+  function facing(hero, dx, dy) {
+    const down = dy >= 0;
+    const sign = dx < 0 ? -1 : 1;
+    const horizontal = Math.abs(dx);
+    const vertical = Math.abs(dy);
+    const face = down ? 'front' : 'back';
+    if(horizontal>vertical*1.65){
+      return {view:sign<0?'left':'right',flip:false,sign};
+    }
+    const original = (down ? frontLeft : backLeft).has(hero) ? -1 : 1;
+    const diagonal = horizontal>vertical*.28;
+    const alternate = newerSheets.has(hero)===diagonal;
+    return {view:face+(alternate?'-alt':''),flip:diagonal&&original!==sign,
+      sign:diagonal?sign:original};
+  }
+
+  function group(hero,view,name){
+    return load(atlas,`art/combat/${hero}-${view}-${name}.webp`,36);
+  }
+  function still(hero,view){
+    const source = hero.startsWith('mob-') ? `art/enemy_${hero.slice(4)}.webp`
+      : hero.startsWith('companion-') ? `art/sprite_${hero.slice(10)}.webp`
+      : miniatureSource(hero,view);
+    return load(stills,source,42);
+  }
+  function preload(hero,view,names=['motion','clash']){
+    return Promise.all(names.map(name=>group(hero,view,name).ready));
+  }
+  function frameIndex(action,time,progress){
+    const clip = clips.get(action==='tap'?'attack':action) || clips.get('idle');
+    const phase = clip.period ? ((time%clip.period)+clip.period)%clip.period/clip.period
+      : Math.max(0,Math.min(1,progress||0));
+    return Math.min(frameCount-1,Math.floor(phase*frameCount));
+  }
+  function tintedFrame(image,sx,sy,color){
+    if(!tintCanvas){
+      tintCanvas=document.createElement('canvas');
+      tintCanvas.width=cellWidth;tintCanvas.height=cellHeight;
+      tintContext=tintCanvas.getContext('2d');
+    }
+    const g=tintContext;
+    g.clearRect(0,0,cellWidth,cellHeight);
+    g.drawImage(image,sx,sy,cellWidth,cellHeight,0,0,cellWidth,cellHeight);
+    g.globalCompositeOperation='multiply';g.globalAlpha=.68;
+    g.fillStyle=color;g.fillRect(0,0,cellWidth,cellHeight);
+    g.globalCompositeOperation='color';g.globalAlpha=.48;
+    g.fillRect(0,0,cellWidth,cellHeight);
+    g.globalCompositeOperation='destination-in';g.globalAlpha=1;
+    g.drawImage(image,sx,sy,cellWidth,cellHeight,0,0,cellWidth,cellHeight);
+    g.globalCompositeOperation='source-over';
+    return tintCanvas;
+  }
+  function draw(g,hero,view,action,time,progress,height,tint){
+    const clip = clips.get(action==='tap'?'attack':action) || clips.get('idle');
+    const image = group(hero,view,clip.group).image;
+    if(image){
+      const frame = frameIndex(action,time,progress);
+      const sx = frame%columns*cellWidth;
+      const sy = (clip.index*3+Math.floor(frame/columns))*cellHeight;
+      const k=height/body;
+      if(tint){
+        g.drawImage(tintedFrame(image,sx,sy,tint),-cellWidth*k/2,-foot*k,cellWidth*k,cellHeight*k);
+      }else{
+        g.drawImage(image,sx,sy,cellWidth,cellHeight,-cellWidth*k/2,-foot*k,cellWidth*k,cellHeight*k);
+      }
+      return true;
+    }
+    if(tint)return false;
+    const fallback = still(hero,view).image;
+    if(!fallback)return false;
+    const w = height*fallback.naturalWidth/fallback.naturalHeight;
+    g.drawImage(fallback,-w/2,-height,w,height);
+    return true;
+  }
+
+  function effect(g,action,time,progress,height,color,angle,style) {
+    const q = frameIndex(action,time,progress)/(frameCount-1);
+    const melee = style==='war'||style==='tank';
+    const attack = action==='attack' && q>.24 && q<.77;
+    const block = action==='block' && q>.08 && q<.94;
+    const power = action==='ult' && q>.08 && q<.96;
+    if(!attack&&!block&&!power&&action!=='stun')return;
+    g.save();
+    g.lineCap='round';
+    if(attack&&melee){
+      const t=(q-.24)/.53, alpha=Math.sin(t*Math.PI);
+      const side=Math.cos(angle)<0?-1:1;
+      g.translate(Math.cos(angle)*height*.23,-height*.50+Math.sin(angle)*height*.12);
+      g.scale(side,1);
+      g.rotate(angle*.22*side);
+      const edge=-1.56+t*2.42;
+      g.globalAlpha*=alpha*.89;
       g.strokeStyle=color;
-      g.lineWidth=height*.012;
+      g.lineWidth=height*.068;
       g.beginPath();
-      g.ellipse(0,height*.82,width*.62,height*.09,0,0,Math.PI*2);
+      g.ellipse(0,0,height*.50,height*.29,-.20,edge-.96,edge);
       g.stroke();
+      g.strokeStyle='#f4fcff';
+      g.lineWidth=height*.022;
+      g.beginPath();
+      g.ellipse(0,0,height*.50,height*.29,-.20,edge-.71,edge+.032);
+      g.stroke();
+    }else if(attack){
+      const flow=(q-.24)/.53, r=height*(.065+.045*Math.sin(flow*Math.PI));
+      g.translate(Math.cos(angle)*height*.28,-height*.59+Math.sin(angle)*height*.12);
+      g.globalAlpha*=Math.sin(flow*Math.PI)*.80;
+      g.strokeStyle=color;
+      g.lineWidth=height*.019;
+      g.beginPath();
+      g.ellipse(0,0,r*1.36,r,.6,0,Math.PI*2);
+      g.stroke();
+      g.fillStyle='#ecfaff';
+      g.beginPath();g.arc(0,0,r*.42,0,Math.PI*2);g.fill();
+    }else if(block){
+      const a=(q-.08)/.86, d=height*.30, alpha=Math.sin(a*Math.PI);
+      g.translate(Math.cos(angle)*d,-height*.48+Math.sin(angle)*d*.38);
+      g.rotate(Math.cos(angle)*.18);
+      g.globalAlpha*=alpha*.88;
+      g.strokeStyle='#baeeff';g.fillStyle='#55b3ff38';
+      g.lineWidth=height*.021;
+      g.beginPath();
+      for(let i=0;i<6;i++){
+        const v=i*Math.PI/3;
+        const x=Math.sin(v)*height*.25,y=Math.cos(v)*height*.34;
+        if(i)g.lineTo(x,y);else g.moveTo(x,y);
+      }
+      g.closePath();g.fill();g.stroke();
+    }else if(power){
+      g.translate(0,-height*.22-q*height*.40);
+      g.globalAlpha*=Math.sin(q*Math.PI)*.8;
+      g.strokeStyle=color;
+      g.lineWidth=height*.021;
+      g.beginPath();
+      for(let i=0;i<3;i++){
+        const a=(q*.8+i/3)*Math.PI*2;
+        g.ellipse(0,0,height*.41,height*.14,0,a,a+.83);
+        g.stroke();
+        g.beginPath();
+      }
+    }else{
+      g.translate(0,-height*1.02);
+      g.fillStyle='#ffdc8d';
+      for(let i=0;i<3;i++){
+        const a=(q+i/3)*Math.PI*2;
+        g.globalAlpha=.62+.28*Math.sin(a);
+        g.beginPath();g.arc(Math.cos(a)*height*.24,Math.sin(a)*height*.055,height*.023,0,Math.PI*2);g.fill();
+      }
     }
+    g.restore();
   }
-  return {frameCount, frame, draw};
+
+  return {frameCount, frameIndex, facing, preload, draw, effect};
 })();
