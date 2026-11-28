@@ -26,7 +26,7 @@ GROUPS = {
 }
 # Signs are screen directions in the artwork, before mirroring.
 FRONT_LEFT = {'cipher'}
-BACK_LEFT = {'cipher', 'grom', 'kairos', 'lyra', 'mila', 'nyx', 'pixel', 'raven', 'scrap', 'tesla', 'zhar'}
+BACK_LEFT = {'bastion', 'cipher', 'grom', 'kairos', 'lyra', 'mila', 'nyx', 'pixel', 'raven', 'scrap', 'tesla', 'zhar'}
 # Most hats, halos and weapon tips extend above the anatomical top of the head.
 HEAD = {'astra':.31, 'glitch':.31, 'pyro':.36, 'sol':.29, 'mila':.32, 'kairos':.27,
         'raven':.27, 'rain':.31, 'phoenix':.30, 'volta':.29, 'lyra':.27, 'murr':.28}
@@ -59,7 +59,7 @@ def center(alpha, lo, hi, fallback):
     return float(np.median(xs)) if len(xs) else fallback
 
 
-def setup(path, hero, view):
+def setup(path, hero, view, direction):
     image = Image.open(path).convert('RGBA')
     image = image.crop(image.getchannel('A').getbbox())
     image.thumbnail((round(WIDTH*.82), BODY), Image.Resampling.LANCZOS)
@@ -80,6 +80,13 @@ def setup(path, hero, view):
     head_x = x+center(alpha,head-.09,head+.09,foot_center)
     profile = view in ('left','right')
     spread = BODY*(.042 if profile else .111)
+    boots=None
+    if profile:
+        feet=(alpha[-max(5,round(image.height*.10)):] > 127).sum(axis=0)>=3
+        edges=np.flatnonzero(np.diff(np.r_[False,feet,False]))
+        clusters=[(a+b-1)/2+x for a,b in zip(edges[::2],edges[1::2]) if b-a>=BODY*.075]
+        if len(clusters)==2:
+            boots=clusters
     shoulder_y = y+image.height*(neck+.055)
     hip_y = y+image.height*hip
     # Each control has its own falloff. Hands and boots can move in opposite directions.
@@ -94,7 +101,7 @@ def setup(path, hero, view):
             (torso_x+side*(spread+.031*BODY), shoulder_y+.10*BODY,.064,.070),
             (torso_x+side*(spread+.072*BODY), shoulder_y+.183*BODY,.088,.096),
             (hip_x+side*spread*.64,hip_y+.11*BODY,.060,.065),
-            (WIDTH/2+side*spread*.85,FOOT-.039*BODY,.072,.069),
+            ((boots[(side+1)//2] if boots else WIDTH/2+side*spread*.85),FOOT-.039*BODY,.072,.069),
             (hip_x+side*(spread+.102*BODY),hip_y+.08*BODY,.076,.133),
         ])
     # Smooth skinning weights for the mesh. Translucent hair and cloth share the outer controls.
@@ -102,8 +109,25 @@ def setup(path, hero, view):
     for px,py,rx,ry in controls:
         distance = ((X-px)/(rx*BODY))**2+((Y-py)/(ry*BODY))**2
         weights.append(np.exp(-distance*.5))
-    weights = np.asarray(weights)
+    weights = np.asarray(weights,dtype=np.float32)
+    gait_weights=weights.copy()
+    far_leg=None
+    if profile and not boots:
+        # The profile sheet hides the far boot. Skin the visible boot as one limb
+        # and place a shaded copy behind the body for the opposite stride.
+        rear=3 if direction>0 else 9
+        taper=np.clip((Y-(FOOT-.33*BODY))/(.24*BODY),0,1)
+        gait_weights[rear+3]*=1-.94*taper
+        gait_weights[rear+4]*=1-.98*taper
+        source=np.array(padded,dtype=np.float32)
+        px=WIDTH/2
+        mask=np.clip(1-(np.abs(X-px)-BODY*.052)/(BODY*.052),0,1)
+        mask*=np.clip((Y-(FOOT-.25*BODY))/(BODY*.075),0,1)
+        source[:,:,:3]*=.72
+        source[:,:,3]*=mask
+        far_leg=Image.fromarray(np.rint(source).astype(np.uint8))
     weights /= np.maximum(weights.sum(axis=0), .0001)
+    gait_weights /= np.maximum(gait_weights.sum(axis=0), .0001)
     arm_pivots = [
         (torso_x+side*spread*.63, shoulder_y+.015*BODY) for side in (-1,1)
     ]
@@ -115,8 +139,8 @@ def setup(path, hero, view):
         below = np.clip(((Y-py)/BODY+.03)/.16,0,1)
         above_boots = np.clip((FOOT+.012*BODY-Y)/(.20*BODY),0,1)
         mask = outer*below*above_boots
-        arm_masks.append(mask)
-    return rgba, weights, arm_pivots, arm_masks
+        arm_masks.append(mask.astype(np.float32))
+    return rgba, weights, gait_weights, arm_pivots, arm_masks, far_leg
 
 
 def pose(action,q,style,direction,shape):
@@ -134,9 +158,9 @@ def pose(action,q,style,direction,shape):
         arm_y_other=-.007*wave
         fabric=.023*math.sin(2*math.pi*q+.75)
     elif action in ('walk','run','fly'):
-        length = {'walk':.106,'run':.178,'fly':.059}[action]
+        length = {'walk':.092,'run':.128,'fly':.059}[action]
         stride=length*wave
-        root_y=(-.011 if action!='fly' else -.068)-length*(.12*abs(wave)+.09*strut)
+        root_y=(-.008 if action!='fly' else -.068)-length*(.13*abs(strut)+.04*strut)
         tilt=direction*length*.34
         arm_x=-stride*.72
         arm_x_other=stride*.68
@@ -260,7 +284,7 @@ def pose(action,q,style,direction,shape):
     for side in (-1,1):
         reach,lift=(arm_x,arm_y) if side==lead else (arm_x_other,arm_y_other)
         step=side*stride
-        step_lift=-max(0,side*(strut*.81+wave*.30))*.07 if action in ('run','walk','fly') else 0
+        step_lift=-max(0,side*strut)*(.112 if action=='run' else .080) if action in ('run','walk','fly') else 0
         offsets.extend([
             (root_x+tilt*.58+reach*.22,body_y+lift*.22),
             (root_x+tilt*.43+reach*.57,body_y+lift*.61),
@@ -312,26 +336,52 @@ def render(rgba, weights, offsets, pivots, masks, rotations, fall, direction):
 
 def build(job):
     global WIDTH, HEIGHT, BODY, FOOT, Y, X
-    path,hero,view,style,shape=job
+    path,hero,view,style,shape,selected=job
     WIDTH, HEIGHT, BODY, FOOT=HERO_SIZE if shape=='hero' else CREATURE_SIZE
     Y, X=np.mgrid[:HEIGHT, :WIDTH].astype(np.float32)
-    rgba, weights, pivots, masks=setup(path,hero,view)
     direction=-1 if view=='left' or view.startswith('front') and hero in FRONT_LEFT or view.startswith('back') and hero in BACK_LEFT else 1
+    rgba,weights,gait_weights,pivots,masks,far_leg=setup(path,hero,view,direction)
     for group,actions in GROUPS.items():
+        if group not in selected: continue
         atlas=Image.new('RGBA',(COLS*WIDTH,len(actions)*3*HEIGHT))
         for row,action in enumerate(actions):
             for i in range(FRAMES):
                 q=i/(FRAMES-1 if action=='die' else FRAMES)
                 offsets,rotations=pose(action,q,style,direction,shape)
-                frame=render(rgba,weights,offsets,pivots,masks,rotations,ease(q) if action=='die' else 0,direction)
+                locomotion=action in ('walk','run')
+                frame=render(rgba,gait_weights if locomotion else weights,offsets,pivots,masks,rotations,ease(q) if action=='die' else 0,direction)
+                if locomotion and far_leg:
+                    rear=7 if direction>0 else 13
+                    dx,dy=offsets[rear]
+                    # The angle pivots above the knee; the landing follows the opposite foot phase.
+                    angle=math.degrees(math.atan2(dx,BODY*.33))
+                    foot=far_leg.rotate(angle,Image.Resampling.BICUBIC,
+                                        center=(WIDTH*.5,FOOT-BODY*.26),translate=(-3*direction,float(dy)))
+                    foot.alpha_composite(frame)
+                    frame=foot
                 atlas.paste(frame,(i%COLS*WIDTH,(row*3+i//COLS)*HEIGHT))
         atlas.save(OUTPUT/f'{hero}-{view}-{group}.webp',quality=82,method=3,alpha_quality=78)
+
+
+def bake_turns(jobs):
+    views=('front','front-alt','back','back-alt','left','right')
+    for hero,shape in sorted({(hero,shape) for _,hero,_,_,shape in jobs}):
+        width,height,*_=HERO_SIZE if shape=='hero' else CREATURE_SIZE
+        active=views if shape=='hero' else ('front',)
+        sheet=Image.new('RGBA',(width//2*len(active),height//2))
+        for i,view in enumerate(active):
+            with Image.open(OUTPUT/f'{hero}-{view}-rest.webp') as rest:
+                first=rest.crop((0,0,width,height)).resize((width//2,height//2),Image.Resampling.LANCZOS)
+                sheet.paste(first,(i*width//2,0))
+        sheet.save(OUTPUT/f'{hero}-turn.webp',quality=88,method=3)
 
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--hero',action='append',help='Only build the named hero (repeatable)')
     parser.add_argument('--creatures-only',action='store_true')
+    parser.add_argument('--turns-only',action='store_true',help='Build the compact turn previews from rest frames')
+    parser.add_argument('--group',action='append',choices=GROUPS,help='Only rebake this clip group')
     parser.add_argument('--jobs',type=int,default=4)
     args=parser.parse_args()
     html=(ROOT/'index.html').read_text()
@@ -351,15 +401,20 @@ def main():
             jobs.append((ROOT/'art'/f'sprite_{pet}.webp',f'companion-{pet}','front','sup',shape))
     assert jobs, 'No matching miniature files'
     OUTPUT.mkdir(exist_ok=True)
+    if args.turns_only:
+        bake_turns(jobs)
+        return
     with tempfile.TemporaryDirectory() as tmp:
         library=Path(tmp)/'rasterizer.so'
         subprocess.run(['c++','-O3','-std=c++17','-shared','-fPIC',
                         str(Path(__file__).with_name('skin-rasterizer.cpp')),
                         '-o',str(library)],check=True)
         with ProcessPoolExecutor(args.jobs,initializer=load_rasterizer,initargs=(library,)) as pool:
-            for i,_ in enumerate(pool.map(build,jobs),1):
+            for i,_ in enumerate(pool.map(build,((*job,tuple(args.group or GROUPS)) for job in jobs)),1):
                 if i==len(jobs) or i%6==0:
                     print(f'{i}/{len(jobs)} directions baked',flush=True)
+    if not args.group or 'rest' in args.group:
+        bake_turns(jobs)
 
 
 

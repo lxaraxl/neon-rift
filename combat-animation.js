@@ -15,51 +15,97 @@ const CombatAnimation = (() => {
   ));
   const newerSheets = new Set(['cipher','grom','lyra','pixel','rain','raven','tesla','zhar']);
   const frontLeft = new Set(['cipher']);
-  const backLeft = new Set(['cipher','grom','kairos','lyra','mila','nyx','pixel','raven','scrap','tesla','zhar']);
+  const backLeft = new Set(['bastion','cipher','grom','kairos','lyra','mila','nyx','pixel','raven','scrap','tesla','zhar']);
   const atlas = Object.fromEntries(Object.keys(groups).map(name=>[name,new Map()]));
-  const atlasBudget = {rest:22e6,motion:13e6,clash:30e6,power:16e6};
-  const stills = new Map();
-  let tintCanvas, tintContext;
+  const atlasBudget = {rest:15e6,motion:14.5e6,clash:17e6,power:10e6};
+  const stills=new Map(),turns=new Map(),tints=new Map();
+  const turnViews=['front','front-alt','back','back-alt','left','right'];
+  const pending=[],deferred=new Map();
+  const unavailable={image:null,ready:Promise.resolve(null)};
+  let activeLoads=0;
 
-  function load(cache, source, limit, weight=1) {
-    let entry = cache.get(source);
+  function drain(){
+    while(activeLoads<3&&pending.length){
+      const entry=pending.shift();
+      if(entry.cancelled){entry.resolve(null);continue}
+      activeLoads++;
+      fetchImage(entry,()=>{
+        activeLoads--;
+        drain();
+      });
+    }
+  }
+
+  function fetchImage(entry,done=()=>{}){
+    const image=new Image();
+    image.decoding='async';
+    if(entry.weight>1)image.fetchPriority='low';
+    const finish=ok=>{
+      entry.settled=true;
+      if(ok&&!entry.cancelled)entry.image=image;
+      entry.resolve(entry.image);
+      done();
+    };
+    image.onload=()=>finish(true);
+    image.onerror=()=>finish(false);
+    image.src=entry.source;
+  }
+
+  function load(cache,source,limit,weight=1){
+    let entry=cache.get(source);
+    const time=performance.now();
     if(entry){
-      cache.delete(source);
-      cache.set(source,entry);
+      entry.used=time;
       return entry;
     }
-    entry = {image:null, ready:null, weight};
-    entry.ready = new Promise(resolve=>{
-      const image = new Image();
-      image.decoding = 'async';
-      image.onload = ()=>{entry.image=image;resolve(image);};
-      image.onerror = ()=>resolve(null);
-      image.src = source;
-    });
-    cache.set(source,entry);
+    if((deferred.get(source)||0)>time)return unavailable;
     let total=0;
     for(const item of cache.values())total+=item.weight;
-    for(const [key,item] of cache){
-      if(total<=limit||key===source)break;
-      cache.delete(key);total-=item.weight;
+    if(total+weight>limit){
+      const stale=[...cache.values()].filter(item=>item.settled&&time-item.used>1100)
+        .sort((a,b)=>a.used-b.used);
+      for(const item of stale){
+        cache.delete(item.source);total-=item.weight;
+        if(total+weight<=limit)break;
+      }
     }
+    // A crowded frame keeps its current assets. Ready turn poses cover clips
+    // that would overshoot the budget, and are never part of the large queue.
+    if(weight>1&&total+weight>limit){
+      deferred.set(source,time+240);
+      return unavailable;
+    }
+    deferred.delete(source);
+    if(weight===1&&cache.size>=limit){
+      const oldest=[...cache.values()].sort((a,b)=>a.used-b.used)[0];
+      if(oldest)cache.delete(oldest.source);
+    }
+    entry={source,weight,image:null,used:time,settled:false,cancelled:false};
+    entry.ready=new Promise(resolve=>{entry.resolve=resolve});
+    cache.set(source,entry);
+    if(weight>1){pending.push(entry);drain()}else fetchImage(entry);
     return entry;
   }
 
-  function facing(hero, dx, dy) {
+  function facing(hero, dx, dy, previous) {
     const down = dy >= 0;
     const sign = dx < 0 ? -1 : 1;
     const horizontal = Math.abs(dx);
     const vertical = Math.abs(dy);
     const face = down ? 'front' : 'back';
-    if(horizontal>vertical*1.65){
+    const wasSide=previous?.view==='left'||previous?.view==='right';
+    const sideways=wasSide?1.44:1.72;
+    if(horizontal>vertical*sideways){
       return {view:sign<0?'left':'right',flip:false,sign};
     }
     const original = (down ? frontLeft : backLeft).has(hero) ? -1 : 1;
-    const diagonal = horizontal>vertical*.28;
-    const alternate = newerSheets.has(hero)===diagonal;
-    return {view:face+(alternate?'-alt':''),flip:diagonal&&original!==sign,
-      sign:diagonal?sign:original};
+    const sameSide=previous?.view.startsWith(face);
+    const isNew=newerSheets.has(hero);
+    const wasDiagonal=sameSide&&(previous.view.endsWith('-alt')===isNew);
+    const diagonal=horizontal>vertical*(wasDiagonal?.14:.19);
+    const alternate=isNew===diagonal;
+    const flip=horizontal<=vertical*.08&&sameSide?previous.flip:horizontal>vertical*.08&&original!==sign;
+    return {view:face+(alternate?'-alt':''),flip,sign:flip?-original:original};
   }
 
   function size(hero){
@@ -68,11 +114,19 @@ const CombatAnimation = (() => {
   function group(hero,view,name){
     const {width,height}=size(hero);
     const weight=width*height*frameCount*groups[name].length;
-    return load(atlas[name],`art/combat/${hero}-${view}-${name}.webp?v=hd1`,atlasBudget[name],weight);
+    const revised=name==='motion'||hero==='bastion';
+    return load(atlas[name],`art/combat/${hero}-${view}-${name}.webp?v=${revised?'stride2':'hd1'}`,atlasBudget[name],weight);
+  }
+  function warmTurn(hero){
+    return load(turns,`art/combat/${hero}-turn.webp`,48);
   }
   function release(){
-    for(const cache of Object.values(atlas))cache.clear();
-    stills.clear();
+    for(const cache of Object.values(atlas)){
+      for(const entry of cache.values())entry.cancelled=true;
+      cache.clear();
+    }
+    for(const entry of pending.splice(0))entry.resolve(null);
+    tints.clear();deferred.clear();
   }
   function still(hero,view){
     const source = hero.startsWith('mob-') ? `art/enemy_${hero.slice(4)}.webp`
@@ -81,7 +135,7 @@ const CombatAnimation = (() => {
     return load(stills,source,42);
   }
   function preload(hero,view,names=['rest']){
-    return Promise.all(names.map(name=>group(hero,view,name).ready));
+    return Promise.all([warmTurn(hero).ready,...names.map(name=>group(hero,view,name).ready)]);
   }
   function frameIndex(action,time,progress){
     const clip = clips.get(action==='tap'?'attack':action) || clips.get('idle');
@@ -90,15 +144,11 @@ const CombatAnimation = (() => {
     return Math.min(frameCount-1,Math.floor(phase*frameCount));
   }
   function tintedFrame(image,sx,sy,color,cellWidth,cellHeight){
-    if(!tintCanvas){
-      tintCanvas=document.createElement('canvas');
-      tintContext=tintCanvas.getContext('2d');
-    }
-    if(tintCanvas.width!==cellWidth||tintCanvas.height!==cellHeight){
-      tintCanvas.width=cellWidth;tintCanvas.height=cellHeight;
-    }
-    const g=tintContext;
-    g.clearRect(0,0,cellWidth,cellHeight);
+    const key=image.src+'|'+sx+'|'+sy+'|'+color;
+    if(tints.has(key))return tints.get(key);
+    const tile=document.createElement('canvas');
+    tile.width=cellWidth;tile.height=cellHeight;
+    const g=tile.getContext('2d');
     g.drawImage(image,sx,sy,cellWidth,cellHeight,0,0,cellWidth,cellHeight);
     g.globalCompositeOperation='multiply';g.globalAlpha=.68;
     g.fillStyle=color;g.fillRect(0,0,cellWidth,cellHeight);
@@ -106,8 +156,9 @@ const CombatAnimation = (() => {
     g.fillRect(0,0,cellWidth,cellHeight);
     g.globalCompositeOperation='destination-in';g.globalAlpha=1;
     g.drawImage(image,sx,sy,cellWidth,cellHeight,0,0,cellWidth,cellHeight);
-    g.globalCompositeOperation='source-over';
-    return tintCanvas;
+    if(tints.size>=160)tints.delete(tints.keys().next().value);
+    tints.set(key,tile);
+    return tile;
   }
   function draw(g,hero,view,action,time,progress,height,tint){
     const clip = clips.get(action==='tap'?'attack':action) || clips.get('idle');
@@ -123,6 +174,15 @@ const CombatAnimation = (() => {
       }else{
         g.drawImage(image,sx,sy,cellWidth,cellHeight,-cellWidth*k/2,-foot*k,cellWidth*k,cellHeight*k);
       }
+      return true;
+    }
+    const turn=warmTurn(hero).image;
+    if(turn){
+      const {width,height:cellHeight,body,foot}=size(hero),k=height/body;
+      const sw=width/2,sh=Math.floor(cellHeight/2);
+      const sx=turn.naturalWidth===sw?0:Math.max(0,turnViews.indexOf(view))*sw;
+      if(tint)g.drawImage(tintedFrame(turn,sx,0,tint,sw,sh),-width*k/2,-foot*k,width*k,cellHeight*k);
+      else g.drawImage(turn,sx,0,sw,sh,-width*k/2,-foot*k,width*k,cellHeight*k);
       return true;
     }
     if(tint)return false;

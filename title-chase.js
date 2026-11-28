@@ -6,7 +6,7 @@ const TitleChase = (() => {
     {id:'volta',x:.35,y:-.027,size:.78,phase:310,color:'#3ad1ff'},
     {id:'silas',x:.48,y:.024,size:.92,phase:20,color:'#a0eaff'},
   ];
-  const motes=Array.from({length:27},(_,i)=>({
+  const motes=Array.from({length:18},(_,i)=>({
     x:(.618*i)%1,y:(.439*i)%1,speed:.07+(i%5)*.024,phase:i*.73,
   }));
   const clamp=q=>Math.max(0,Math.min(1,q));
@@ -14,13 +14,13 @@ const TitleChase = (() => {
   const frac=q=>q-Math.floor(q);
 
   function start(canvas){
-    const g=canvas.getContext('2d',{alpha:false});
+    const g=canvas.getContext('2d');
     const image=new Image();
     image.fetchPriority='high';
     image.src='art/bg_title.webp';
     const motion=matchMedia('(prefers-reduced-motion: reduce)');
     const startTime=performance.now();
-    let width=0,height=0,scale=1,overlay,raf;
+    let width=0,height=0,scale=1,raf;
     let staticReady=false;
     Promise.all([
       ...chase.map(({id})=>CombatAnimation.preload(id,'right',['motion','rest'])),
@@ -29,33 +29,12 @@ const TitleChase = (() => {
 
     function fit(){
       const w=canvas.clientWidth,h=canvas.clientHeight;
-      const d=Math.min(2,devicePixelRatio||1);
+      const d=Math.min(1.75,devicePixelRatio||1);
       if(!w||!h)return false;
       if(width===Math.round(w*d)&&height===Math.round(h*d))return true;
       width=canvas.width=Math.round(w*d);height=canvas.height=Math.round(h*d);scale=d;
       staticReady=false;
-      const base=document.createElement('canvas');
-      base.width=width;base.height=height;
-      const b=base.getContext('2d');
-      const shade=b.createLinearGradient(0,0,0,height);
-      shade.addColorStop(0,'#150822aa');
-      shade.addColorStop(.32,'#16082816');
-      shade.addColorStop(.63,'#15082200');
-      shade.addColorStop(1,'#10061dea');
-      b.fillStyle=shade;b.fillRect(0,0,width,height);
-      overlay=base;
       return true;
-    }
-
-    function background(t){
-      g.fillStyle='#20103e';g.fillRect(0,0,width,height);
-      if(image.naturalWidth){
-        const k=Math.max(width/image.width,height/image.height)*1.13;
-        const w=image.width*k,h=image.height*k;
-        const slide=(Math.sin(t/2100)*.024-.009)*width;
-        g.drawImage(image,(width-w)/2+slide,(height-h)/2,w,h);
-      }
-      g.drawImage(overlay,0,0);
     }
 
     function road(t,ground){
@@ -130,26 +109,30 @@ const TitleChase = (() => {
       if(!fit()||(reduced&&staticReady&&image.complete))return;
       const t=reduced?1150:now-startTime;
       const q=frac(t/duration);
-      const ground=height*.715;
+      const ground=BattleLayout.titleGround(width,height,image);
       const h=Math.min(width*.224,height*.126);
       const escape=ease((q-.74)/.23);
       const advance=ease(q/.33);
-      const bossX=width*(.700+advance*.049+escape*.355)+Math.sin(t/705)*width*.014;
-      const bossY=ground-height*.023;
+      const bossHeight=h*1.68;
+      const rightEdge=width-bossHeight*.59;
+      const bossX=Math.min(rightEdge,width*(.705+advance*.049+escape*.18)+Math.sin(t/705)*width*.011);
+      const bossY=ground-height*.008;
       const approach=ease(q/.13);
       const fade=reduced?1:approach*(1-ease((q-.88)/.12));
       g.imageSmoothingEnabled=true;
-      g.imageSmoothingQuality='high';
-      background(t);
+      g.imageSmoothingQuality='medium';
+      g.clearRect(0,0,width,height);
       road(t,ground);
-      portal(width*.91,bossY,h*1.95,ease((q-.65)/.16)*(1-ease((q-.92)/.08)));
+      portal(rightEdge,bossY,h*1.78,ease((q-.65)/.16)*(1-ease((q-.92)/.08)));
       sparks(t,ground,bossX);
-      figure('mob-golem','front',reduced?'idle':'run',bossX,bossY,h*1.84,t*.81,fade,'#ff687a');
+      figure('mob-golem','front',reduced?'idle':'run',bossX,bossY,bossHeight*(1-escape*.23),t*.81,fade*(1-escape*.72),'#ff687a');
       for(const actor of chase){
         const stride=Math.sin(t/695+actor.phase)*width*.012;
-        const x=width*(actor.x+advance*.11+escape*.30-(1-approach)*.14)+stride;
-        const y=ground+height*actor.y;
-        figure(actor.id,'right',reduced?'idle':'run',x,y,h*actor.size,t+actor.phase,fade,actor.color);
+        const body=h*actor.size;
+        const desired=width*(actor.x+advance*.11+escape*.25-(1-approach)*.065)+stride;
+        const x=Math.min(width-body*.62,Math.max(body*.62,desired));
+        const y=ground+height*actor.y*.65;
+        figure(actor.id,'right',reduced?'idle':'run',x,y,body,t+actor.phase,fade,actor.color);
       }
       if(reduced)staticReady=true;
     }

@@ -88,11 +88,12 @@ const CampPatrol = (() => {
       const w=canvas.width,h=canvas.height;
       const rect=canvas.getBoundingClientRect(),box=rewardPanel.getBoundingClientRect();
       const hud=box.height? (box.top-rect.top)*h/Math.max(1,rect.height):h*.78;
-      const laneTop=Math.max(h*.40,fireY+h*.049),laneBottom=Math.max(laneTop+h*.16,hud-h*.033);
+      const laneBottom=Math.max(h*.46,Math.min(h*.76,hud-h*.020));
+      const laneTop=Math.max(h*.34,Math.min(laneBottom-h*.12,fireY+h*.055));
       const size=Math.min(w*.209,h*.116);
       const floor=value=>mix(laneTop,laneBottom,clamp((value-.45)/.27));
       g.drawImage(base,0,0);
-      g.imageSmoothingQuality='high';
+      g.imageSmoothingQuality='medium';
 
       // A small warm light anchors the fire to the original illustrated camp.
       const heat=Math.sin(time/177)*.11+.89;
@@ -104,8 +105,8 @@ const CampPatrol = (() => {
       const advance=ease((phase-1280)/720),retreat=ease((phase-4120)/1000);
       const isMelee=actors[attacker]&&['war','tank'].includes(actors[attacker].hero.cls);
       const enemyId='mob-'+monster(wave);
-      const enemy={id:enemyId,view:'front',x:w*mix(-.10,.315,ease(phase/1600)),y:floor(.620),
-        h:size*1.04,elapsed:phase,progress:0,alpha:1,action:phase<1600?'run':'idle'};
+      const enemy={id:enemyId,view:'front',x:w*mix(.12,.315,ease(phase/1600)),y:floor(.620),
+        h:size*1.04,elapsed:phase,progress:0,alpha:ease(phase/450),action:phase<1600?'run':'idle'};
       if(phase>=2100&&phase<2670){enemy.action='attack';enemy.progress=(phase-2100)/570}
       if(phase>=2680&&phase<3040){enemy.action='hit';enemy.progress=(phase-2680)/360}
       if(phase>=3370){enemy.action='die';enemy.progress=clamp((phase-3370)/660);enemy.alpha=1-ease(enemy.progress)}
