@@ -83,6 +83,17 @@ test('Bastion faces a foe on either side of the rear angle',()=>{
   assert.equal(right.flip,true);
 });
 
+test('walk and run clocks follow ground distance in either direction',()=>{
+  const animation=load('combat-animation.js','CombatAnimation');
+  const size=100;
+  assert.equal(animation.strideTime(size*.245/.62,size,'walk'),850);
+  assert.equal(animation.strideTime(size*.34/.55,size,'run'),520);
+  const a=animation.frameIndex('run',animation.strideTime(0,size,'run'),0);
+  const b=animation.frameIndex('run',animation.strideTime(22,size,'run'),0);
+  assert.equal(a,0);
+  assert(b>a);
+});
+
 test('the requested angle stays visible while its action sheet loads',async()=>{
   const atlasRequests=[];
   class PendingImage{

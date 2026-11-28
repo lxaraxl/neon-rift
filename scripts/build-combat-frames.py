@@ -14,6 +14,7 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[1]
 SOURCES = ROOT / 'art/miniatures'
 OUTPUT = ROOT / 'art/combat'
+STRIDE_OUTPUT = ROOT / 'art/stride'
 SHOWCASE_OUTPUT = ROOT / 'art/showcase'
 SHOWCASE_SIZE = (112, 119)
 HERO_SIZE = (192, 204, 150, 175)
@@ -77,6 +78,75 @@ def ease(t):
 
 def impulse(q, start, peak, end):
     return ease((q-start)/(peak-start)) * (1-ease((q-peak)/(end-peak)))
+
+
+def footfall(q, running):
+    # A step travels backward at an even rate during contact. Only the swing lifts.
+    stance=.55 if running else .62
+    length=.34 if running else .245
+    lift=.106 if running else .057
+    if q<stance:
+        return length*(.5-q/stance),0.
+    air=(q-stance)/(1-stance)
+    return length*(ease(air)-.5),-lift*math.sin(math.pi*air)**1.4
+
+
+def segment(layer, start, end, new_start, new_end):
+    # Inverse similarity transform keeps the painted fabric and boots in one piece.
+    sx,sy=start; ex,ey=end
+    ax,ay=new_start; bx,by=new_end
+    vx,vy=bx-ax,by-ay; ux,uy=ex-sx,ey-sy
+    length=max(1,vx*vx+vy*vy)
+    c=(ux*vx+uy*vy)/length
+    s=(uy*vx-ux*vy)/length
+    return layer.transform((WIDTH,HEIGHT),Image.Transform.AFFINE,
+                           (c,-s,sx-c*ax+s*ay,s,c,sy-s*ax-c*ay),Image.Resampling.BICUBIC)
+
+
+def layer_with_mask(rgba, mask, brightness=1):
+    out=np.array(rgba,copy=True)
+    out[:,:,:3]*=brightness
+    out[:,:,3]*=mask
+    return Image.fromarray(np.clip(np.rint(out),0,255).astype(np.uint8))
+
+
+def side_legs(rgba, hero, direction):
+    source=rgba.copy()
+    source[:,:,:3]*=255/np.maximum(source[:,:,3:4],1)
+    ankle=FOOT-BODY*.046
+    length=BODY*({'astra':.23,'glitch':.25,'pyro':.252,'phoenix':.245,'lyra':.24,
+                  'kairos':.275,'raven':.275}.get(hero,.295))
+    hip_y=ankle-length
+    knee_y=hip_y+length*.49
+    # A tapered mask separates the leg from the neighbouring staff, cape or tail.
+    at_hip=WIDTH*.5+direction*BODY*.012
+    at_knee=WIDTH*.5-direction*BODY*.008
+    x=np.interp(Y,[hip_y,knee_y,ankle],[at_hip,at_knee,WIDTH*.5])
+    spread=np.interp(Y,[hip_y,knee_y,ankle,FOOT],[.066,.071,.071,.091])*BODY
+    mask=np.clip((spread+.015*BODY-np.abs(X-x))/(.023*BODY),0,1)
+    mask=np.asarray(mask*np.clip((Y-hip_y+BODY*.017)/(BODY*.036),0,1),dtype=np.float32)
+    knee_blend=np.clip((Y-knee_y+BODY*.025)/(BODY*.050),0,1)
+    layers=[layer_with_mask(source,mask*(1-knee_blend)),layer_with_mask(source,mask*knee_blend)]
+    far=[layer_with_mask(source,mask*(1-knee_blend),.67),layer_with_mask(source,mask*knee_blend,.67)]
+    upper=rgba*(1-mask[:,:,None])
+    return upper, layers, far, (at_hip,hip_y),(at_knee,knee_y),(WIDTH*.5,ankle)
+
+
+def posed_leg(grounded, layers, points, step, lift, body_shift, direction, far=False):
+    hip,knee,ankle=points
+    thigh=math.dist(hip,knee); shin=math.dist(knee,ankle)
+    root=(hip[0]+direction*(BODY*.026+(-BODY*.018 if far else 0)),hip[1]+body_shift)
+    foot=(ankle[0]+direction*step*BODY,ankle[1]+lift*BODY)
+    dx,dy=foot[0]-root[0],foot[1]-root[1]
+    actual=max(1,math.hypot(dx,dy))
+    reach=min(actual,(thigh+shin)*.993)
+    ux,uy=dx/actual,dy/actual
+    along=(thigh*thigh-shin*shin+reach*reach)/(2*reach)
+    bend=math.sqrt(max(0,thigh*thigh-along*along))
+    joint=(root[0]+ux*along+direction*uy*bend,root[1]+uy*along-direction*ux*bend)
+    # Keep the ankle at the requested ground position even at full extension.
+    grounded.alpha_composite(segment(layers[0],hip,knee,root,joint))
+    grounded.alpha_composite(segment(layers[1],knee,ankle,joint,foot))
 
 
 def center(alpha, lo, hi, fallback):
@@ -420,6 +490,44 @@ def build_showcase(job):
     atlas.save(SHOWCASE_OUTPUT/f'{hero}.webp',quality=81,method=4,alpha_quality=86)
 
 
+def build_stride(job):
+    path,hero,view,style,_=job
+    direction=-1 if view=='left' or view.startswith('front') and hero in FRONT_LEFT or view.startswith('back') and hero in BACK_LEFT else 1
+    rgba,weights,_,pivots,masks,_=setup(path,hero,view,direction)
+    profile=view in ('left','right')
+    if profile:
+        upper, near, far, *points=side_legs(rgba,hero,direction)
+    atlas=Image.new('RGBA',(COLS*WIDTH,6*HEIGHT))
+    for row,running in enumerate((False,True)):
+        for i in range(FRAMES):
+            q=i/FRAMES
+            action='run' if running else 'walk'
+            offsets,turns=pose(action,q,style,direction,'hero')
+            contact=[footfall((q+j*.5)%1,running) for j in (0,1)]
+            # Speed comes from the feet. The head settles over the planted hip,
+            # and loose hair/clothes follow the shoulders with a slight delay.
+            bounce=(.020 if running else .013)*math.cos(4*math.pi*q)*BODY
+            body_shift=BODY*(.032 if running else .019)+bounce
+            offsets[:3,1]=body_shift*np.array([.70,.90,1])
+            if profile:
+                offsets[:,1]*=.66
+                for j in (7,13):offsets[j]=[0,0]
+                frame=Image.new('RGBA',(WIDTH,HEIGHT))
+                posed_leg(frame,far,points,*contact[1],body_shift,direction,True)
+                frame.alpha_composite(render(upper,weights,offsets,pivots,masks,turns,0,direction))
+                posed_leg(frame,near,points,*contact[0],body_shift,direction)
+            else:
+                # In the diagonal views the source has two visible boots.
+                for j,(step,lift) in enumerate(contact):
+                    base=3+6*j
+                    depth=-1 if view.startswith('back') else 1
+                    offsets[base+3]=[step*BODY*direction*.34, (lift*.47+depth*step*.14)*BODY]
+                    offsets[base+4]=[step*BODY*direction*.52,(lift+depth*step*.22)*BODY]
+                frame=render(rgba,weights,offsets,pivots,masks,turns,0,direction)
+            atlas.paste(frame,(i%COLS*WIDTH,(row*3+i//COLS)*HEIGHT))
+    atlas.save(STRIDE_OUTPUT/f'{hero}-{view}.webp',quality=83,method=3,alpha_quality=88)
+
+
 def bake_turns(jobs):
     views=('front','front-alt','back','back-alt','left','right')
     for hero,shape in sorted({(hero,shape) for _,hero,_,_,shape in jobs}):
@@ -439,11 +547,12 @@ def main():
     parser.add_argument('--creatures-only',action='store_true')
     parser.add_argument('--turns-only',action='store_true',help='Build the compact turn previews from rest frames')
     parser.add_argument('--showcase',action='store_true',help='Build the 24-frame collection and profile miniature loops')
+    parser.add_argument('--stride',action='store_true',help='Build the articulated walking and running loops')
     parser.add_argument('--group',action='append',choices=GROUPS,help='Only rebake this clip group')
     parser.add_argument('--jobs',type=int,default=4)
     args=parser.parse_args()
-    if args.showcase and (args.creatures_only or args.turns_only or args.group):
-        parser.error('--showcase builds the hero collection loops and can be filtered with --hero')
+    if (args.showcase or args.stride) and (args.creatures_only or args.turns_only or args.group or args.showcase and args.stride):
+        parser.error('Choose one hero-only build. Use --hero to filter it.')
     html=(ROOT/'index.html').read_text()
     classes=dict(re.findall(r"\{id:'([a-z]+)',name:'[^']+',rar:'[^']+',el:'[^']+',cls:'([^']+)'",html))
     jobs=[]
@@ -467,12 +576,19 @@ def main():
     if args.showcase:
         jobs=[job for job in jobs if job[2]=='front' and job[4]=='hero']
         SHOWCASE_OUTPUT.mkdir(exist_ok=True)
+    if args.stride:
+        jobs=[job for job in jobs if job[4]=='hero']
+        STRIDE_OUTPUT.mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
         library=Path(tmp)/'rasterizer.so'
         subprocess.run(['c++','-O3','-std=c++17','-shared','-fPIC',
                         str(Path(__file__).with_name('skin-rasterizer.cpp')),
                         '-o',str(library)],check=True)
         with ProcessPoolExecutor(args.jobs,initializer=load_rasterizer,initargs=(library,)) as pool:
+            if args.stride:
+                for i,_ in enumerate(pool.map(build_stride,jobs),1):
+                    if i==len(jobs) or i%12==0: print(f'{i}/{len(jobs)} hero strides baked',flush=True)
+                return
             if args.showcase:
                 list(pool.map(build_showcase,jobs))
                 print(f'{len(jobs)} hero showcases baked')

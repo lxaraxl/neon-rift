@@ -254,10 +254,10 @@ button{font:inherit;color:inherit;border:0;cursor:pointer;background:none}
 .spc small{position:absolute;bottom:0;font-size:8px;color:var(--gold)}
 .loading{position:absolute;inset:0;z-index:100;background:#05030d;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
 .title2{background:#120a2a!important;justify-content:flex-start!important;padding-top:13vh;gap:10px!important;overflow:hidden}
-.title2 .title-world{position:absolute;inset:0;z-index:0;pointer-events:none;background:url(art/bg_title.webp) center/cover no-repeat;transform:scale(1.26);will-change:transform}
+.title2 .title-world{position:absolute;left:0;top:10%;height:86%;width:400%;z-index:0;pointer-events:none;background:url(art/bg_title_city.webp) 0 center/auto 100% repeat-x;mask-image:linear-gradient(transparent,black 10%,black 92%,transparent);will-change:transform}
 .title2 .title-shade{position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(180deg,#150822a0,transparent 37%,transparent 71%,#10061de8)}
 .title2 .title-transition{position:absolute;inset:0;z-index:2;pointer-events:none;background:#180d35;opacity:0;will-change:opacity}
-.title2 canvas.tcv{position:absolute;inset:0;width:100%;height:100%;z-index:2}
+.title2 canvas.tcv{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none}
 .title2 .logo,.title2 .tbtn{position:relative;z-index:3}
 .title2 .logo{animation:tdrop 1s cubic-bezier(.2,1.5,.4,1) both}
 .title2 .logo b{font-size:clamp(32px,10.9vw,48px);filter:drop-shadow(0 0 18px rgba(255,61,138,.9)) drop-shadow(0 4px 0 #2a0a40) drop-shadow(0 0 2px #fff)}
@@ -656,6 +656,7 @@ button{font:inherit;color:inherit;border:0;cursor:pointer;background:none}
 .b-result.lose{background:linear-gradient(rgba(10,6,30,.25),rgba(10,6,30,.35) 45%,rgba(10,6,30,.65)),url(art/bg_result_lose.webp) center top/cover no-repeat!important}
 .gart{display:inline-block;background-repeat:no-repeat;filter:drop-shadow(0 2px 2px rgba(0,0,0,.5))}
 
+.camp-land{background:#392617 url(art/bg_camp_routes.webp) center/cover no-repeat}
 .camp-rewards{position:absolute;left:12px;right:12px;bottom:calc(var(--camp-nav,76px) + 10px);z-index:6!important;padding:10px 12px;border:1px solid #edbc65;border-radius:14px;background:linear-gradient(160deg,#2b1933f5,#191022f7);color:#fff0d3;box-shadow:0 4px 15px #160b1c66}
 .camp-rewards-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .camp-rewards h2{margin:0;color:#ffe3ac;font:800 15px Manrope,system-ui}
@@ -776,7 +777,34 @@ button{font:inherit;color:inherit;border:0;cursor:pointer;background:none}
 .rank-panel small{color:#d9c6ed;display:block;margin-top:6px}
 .rank-max{margin:10px 0 3px;color:#ffdf99}
 @media(prefers-reduced-motion:reduce){.rank-promotion b{animation:none}}
-</style></head><body><div id="app"></div><script src="miniatures.js"></script><script src="battle-layout.js?v=diagonal"></script><script src="combat-animation.js?v=stride2"></script><script src="hero-rank.js?v=1"></script><script src="hero-showcase.js?v=1"></script><script src="profile-motion.js?v=gestures"></script><script src="title-chase.js?v=parallax"></script><script src="camp-patrol.js?v=bridge2"></script><script>
+/* Account setup and the player profile share the game's dark panels. */
+.player-profile.ava{background:linear-gradient(145deg,var(--player-tone),#493276);padding:2px}
+.identity-overlay{position:absolute;inset:0;z-index:110;display:grid;place-items:center;padding:calc(10px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom));background:#0c081cba;backdrop-filter:blur(5px)}
+.identity-card{width:min(100%,400px);max-height:100%;overflow:auto;overscroll-behavior:contain;display:grid;gap:10px;padding:18px 14px 14px;border-radius:19px;border:1px solid #cea9c082;background:linear-gradient(155deg,#332347,#19122e 72%);box-shadow:0 15px 32px #04020d9c;color:#fff3e2;font:700 13px/1.3 Manrope,system-ui}
+.identity-card h1{margin:0;text-align:center;font:800 clamp(21px,6vw,28px)/1.14 Philosopher,serif;color:#ffe3a8}
+.identity-card h2{margin:0;font:800 14px/1.2 Manrope,system-ui}
+.identity-options,.identity-form{display:grid;gap:8px}
+.identity-social,.profile-footer,.profile-tones{display:flex;gap:6px;flex-wrap:wrap}
+.identity-social>.btn{flex:1;min-height:44px}
+.identity-card .btn:disabled{opacity:.57;cursor:default}
+.identity-form label{display:grid;gap:4px}
+.identity-form input{min-height:44px;width:100%;border:1px solid #946fbf;border-radius:9px;padding:8px 10px;background:#100b1f;color:#fff;font:600 16px Manrope,system-ui}
+.identity-form input:focus-visible,.identity-card button:focus-visible{outline:2px solid #ffe0a0;outline-offset:2px}
+.identity-card small{color:#ddcde7;font:700 11px/1.35 Manrope,system-ui}
+.identity-error{margin:0;color:#ffc2ca;line-height:1.4}
+.identity-error:empty{display:none}
+.player-card{border-color:var(--profile-accent)}
+.player-card header{display:flex;align-items:center;gap:10px}
+.player-card header h1{text-align:left}
+.profile-avatar{width:58px;height:58px;object-fit:contain;border:1px solid var(--profile-accent);background:#211334;border-radius:14px}
+.profile-avatars{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;max-height:132px;overflow:auto}
+.profile-avatars button{height:46px;border:1px solid #936bcc62;border-radius:8px;background:#180e2e}
+.profile-avatars img{height:100%;max-width:100%;object-fit:contain}
+.profile-tones button{flex:1;min-height:37px;border:1px solid #9576aa80;border-radius:8px;white-space:nowrap}
+.profile-tones button::before{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;background:var(--choice)}
+.profile-avatars button[aria-pressed=true],.profile-tones button[aria-pressed=true]{border-color:var(--profile-accent);box-shadow:inset 0 0 0 1px var(--profile-accent)}
+.profile-footer>.btn{flex:1}
+</style></head><body><div id="app"></div><script src="miniatures.js"></script><script src="battle-layout.js?v=diagonal"></script><script src="combat-animation.js?v=contact"></script><script src="account-config.js"></script><script src="accounts.js?v=1"></script><script src="hero-rank.js?v=1"></script><script src="hero-showcase.js?v=1"></script><script src="profile-motion.js?v=gestures"></script><script src="title-chase.js?v=avenue"></script><script src="camp-patrol.js?v=roads"></script><script>
 // ===== ICONS: hand-made game icons (SVG), no emoji =====
 const ICON=(()=>{
   const G=(id,a,b)=>`<linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>`;
@@ -2259,7 +2287,7 @@ function newState(){
     arena:{pts:1000,wins:0},guild:{tree:{war:0,tank:0,mage:0,arch:0,sup:0},best:0,total:0},
     rift:null,riftBest:0,bag:{},stats:{wins:0,ults:0},tut:0,muted:false,speed:1};
 }
-const BACKUP_KEY=SAVE_KEY+'_backup';
+const SAVE_SLOT=()=>NeonAccounts.gameKey();
 let S,lastSaved=null,saveBlocked=false,saveNotice='';
 function readSave(raw){
   const data=raw?JSON.parse(raw):null;
@@ -2280,12 +2308,13 @@ function readSave(raw){
 function load(){
   S=newState();
   try{
-    const raw=localStorage.getItem(SAVE_KEY);
+    const local=localStorage.getItem(SAVE_SLOT());
+    const raw=NeonAccounts.restoreSave||local;
     if(raw){
-      try{S=readSave(raw);lastSaved=raw}
+      try{S=readSave(raw);lastSaved=local}
       catch{
         try{
-          const backup=localStorage.getItem(BACKUP_KEY);
+          const backup=localStorage.getItem(SAVE_SLOT()+'_backup');
           S=readSave(backup);
           saveNotice='Загружена резервная копия прогресса';
           save();
@@ -2296,6 +2325,7 @@ function load(){
       }
     }
   }catch{saveBlocked=true;saveNotice='Хранилище браузера недоступно. Игра открыта во временном режиме'}
+  applyIdentity();
   ensureDaily();
   save();
 }
@@ -2305,10 +2335,10 @@ function save(){
     const raw=JSON.stringify(S);
     if(raw===lastSaved)return;
     if(lastSaved){
-      try{localStorage.setItem(BACKUP_KEY,lastSaved)}catch{}
+      try{localStorage.setItem(SAVE_SLOT()+'_backup',lastSaved)}catch{}
     }
-    localStorage.setItem(SAVE_KEY,raw);
-    lastSaved=raw;
+    localStorage.setItem(SAVE_SLOT(),raw);
+    lastSaved=raw;NeonAccounts.syncLater(raw);
   }catch{
     saveBlocked=true;
     saveNotice='Хранилище переполнено или недоступно. Прогресс сохраняется только до закрытия игры';
@@ -2517,7 +2547,7 @@ const Battle=(()=>{
     const st=Object.assign({},u.st);
     if(buffs){if(buffs.atk)st.atk*=1+.2*buffs.atk;if(buffs.hp)st.hp*=1+.25*buffs.hp;if(buffs.crit)st.crit+=.2*buffs.crit;if(buffs.spd)st.spd+=15*buffs.spd}
     const art=u.hid?(side==='a'?ART.get('hb:'+u.hid,()=>ART.heroBack(HMAP[u.hid])):ART.get('h:'+u.hid,()=>ART.hero(HMAP[u.hid]))):ART.get('m:'+u.mon+u.col,()=>ART.monster(u.mon,u.col));
-    const o={...u,side,idx:i,st,maxhp:Math.round(st.hp),hp:Math.round(st.hp),energy:buffs&&buffs.energy?50:0,s:{},art,dmg:0,heal:0,dead:false,x:0,y:0,ax:0,ay:0,anim:null,hitT:-Infinity,appear:now()+1150+i*110+(side==='e'?260:0),scale:u.boss?1.5:1};
+    const o={...u,side,idx:i,st,maxhp:Math.round(st.hp),hp:Math.round(st.hp),energy:buffs&&buffs.energy?50:0,s:{},art,dmg:0,heal:0,dead:false,x:0,y:0,ax:0,ay:0,anim:null,hitT:-Infinity,appear:now()+1150+i*110+(side==='e'?260:0)};
     if(u.hpFrac!=null){o.hp=Math.round(o.maxhp*u.hpFrac);if(o.hp<=0){o.hp=0;o.dead=true}}
     return o;
   }
@@ -2537,11 +2567,10 @@ const Battle=(()=>{
         u.x=u.renderX=x;
         u.y=u.renderY=y;
         u.row=row;
-        u.ps=.86+.28*u.y/H;
       });
     }
     const occupied=units.map(u=>{
-      const height=unitH(u)*(u.hid?1.27:1);
+      const height=unitH(u);
       return {x:u.x,y:u.y,height,halfWidth:height*.49};
     });
     for(const side of ['a','e']){
@@ -2570,8 +2599,8 @@ const Battle=(()=>{
           u.runP=arrival||returning;u.returning=returning;
           if(u.runP){
             const distance=Math.hypot(motion.tx-u.x,motion.ty-u.y);
-            const cycles=Math.max(.48,Math.min(2.2,distance/(unitH(u)*.97)));
-            u.stepClock=travel*cycles*(returning?850:520);
+            const walked=distance*(returning?1-travel:travel);
+            u.stepClock=CombatAnimation.strideTime(walked,unitH(u),returning?'walk':'run');
           }
           u.atkP=(p-STRIKE_START)/(STRIKE_END-STRIKE_START);
         }
@@ -2617,8 +2646,9 @@ const Battle=(()=>{
   function proj(a,b,color,kind='orb'){if(headless)return Promise.resolve();const dur=260;aimAt(a,b,dur+100);fx.push({k:'proj',x0:a.x,y0:a.y-unitH(a)*.5,x1:b.x,y1:b.y-unitH(b)*.5,t0:now(),dur:dur/speed,color,kind});return wait(dur)}
   function ring(x,y,color,r=60,dur=450){if(headless)return;fx.push({k:'ring',x,y,color,r:r*DPR,t0:now(),dur:dur/speed})}
   function beam(x,color,y){if(headless)return;fx.push({k:'beam',x,y:y==null?H*.6:y,color,t0:now(),dur:500/speed})}
-  const uw=u=>Math.min(W/4.1,H/6.6)*.86*u.scale*(u.ps||1)*(u.hid?.52:.56)*(u.art.ovs||1);
-  const unitH=u=>u.height??uw(u)*(u.art.ready?u.art.height/u.art.width:u.hid?1.42:1);
+  const fighterHeight=()=>Math.min(W*.178,H*.115);
+  const uw=u=>fighterHeight()*(u.hid?.77:1);
+  const unitH=u=>u.height??fighterHeight();
   function slash(x,y,col,angle){if(headless)return;fx.push({k:'slash',x,y,color:col,t0:now(),dur:300/speed,rot:angle})}
 
 
@@ -2688,12 +2718,13 @@ const Battle=(()=>{
     u.s.shield=(u.s.shield||0)+amount;
     u.guard={t0:now(),dur:460/speed};
   }
-  const LUNGE_MS=1040, STRIKE_START=.24, STRIKE_END=.72;
+  const LUNGE_MS=1130, STRIKE_START=.30, STRIKE_END=.71;
   const STRIKE_IMPACT=STRIKE_START+(STRIKE_END-STRIKE_START)*.42;
   async function lunge(u,t){
     const dx=t.x-u.x,dy=t.y-u.y, distance=Math.hypot(dx,dy)||1;
     const reach=Math.min(distance*.8,(uw(t)+uw(u))*.49);
     aimAt(u,t,LUNGE_MS,['motion','clash']);
+    if(u.hid)CombatAnimation.preload(u.hid,CombatAnimation.facing(u.hid,-dx,-dy).view,['motion']);
     const stop=floorPoint(t.x-dx/distance*reach,t.y-dy/distance*reach,u);
     u.anim={t0:now(),dur:LUNGE_MS/speed,tx:stop.x,ty:stop.y};
     await wait(LUNGE_MS*STRIKE_IMPACT);
@@ -2876,12 +2907,15 @@ const Battle=(()=>{
       g.translate(X,Y);
 
       if(u.hid){
-        const facing=CombatAnimation.facing(u.hid,direction.dx,direction.dy,u.facing);
+        const travelFace=u.anim&&u.runP&&(u.returning?-1:1);
+        const dx=travelFace?(u.anim.tx-u.x)*travelFace:direction.dx;
+        const dy=travelFace?(u.anim.ty-u.y)*travelFace:direction.dy;
+        const facing=CombatAnimation.facing(u.hid,dx,dy,u.facing);
         u.facing=facing;
         const id=facing.view.startsWith('back')?u.hid+'_b':u.hid;
-        if(!RIG.draw(g,id,action,time,progress,0,0,h*1.27,facing.flip,facing)){
+        if(!RIG.draw(g,id,action,time,progress,0,0,h,facing.flip,facing)){
           if(direction.dx<0)g.scale(-1,1);
-          if(u.art.width>1)g.drawImage(u.art,-w/2,-h,w,h);
+          if(u.art.width>1){const width=h*u.art.width/u.art.height;g.drawImage(u.art,-width/2,-h,width,h)}
         }
       }else{
         g.scale(direction.dx<0?-1:1,1);
@@ -2903,7 +2937,7 @@ const Battle=(()=>{
         g.restore();
       }
       if(!u.dead&&alpha>0){
-        const bw=w*.62,bx=X-bw/2,by=Y-h*(u.hid?1.30:1.04)-4*DPR,bh=6*DPR;
+        const bw=w*.62,bx=X-bw/2,by=Y-h*1.06-4*DPR,bh=6*DPR;
         g.fillStyle='rgba(8,4,20,.8)';g.beginPath();g.roundRect(bx-1.5*DPR,by-1.5*DPR,bw+3*DPR,bh+6*DPR,4*DPR);g.fill();
         const hp=Math.max(0,u.hp/u.maxhp);
         g.fillStyle=u.side==='a'?'#5fe79b':'#ff6e85';
@@ -2989,7 +3023,7 @@ const Battle=(()=>{
     syn={a:synergy('a'),e:synergy('e')};
     if(!headless){
       ov=document.createElement('div');ov.id='battle';ov.innerHTML=`<canvas class="b-sprites" aria-hidden="true"></canvas>
-      <div class="b-top"><div class="b-vs"><span class="b-side a"><i></i><b>${(S.name||'Игрок')}</b></span><em>VS</em><span class="b-side e"><b>${o.title||'Битва'}</b><i></i></span></div><div class="b-round">1/${maxRounds} раунд</div></div>
+      <div class="b-top"><div class="b-vs"><span class="b-side a"><i></i><b>${safeText(S.name||'Игрок')}</b></span><em>VS</em><span class="b-side e"><b>${o.title||'Битва'}</b><i></i></span></div><div class="b-round">1/${maxRounds} раунд</div></div>
       <div class="b-total"><small>Общий урон</small><b>0</b></div>
       <div class="b-meter"></div>
       <div class="b-ctrl"><button class="b-speed" aria-label="Скорость боя">×${speed}</button><button class="b-fx" aria-pressed="${fxLight}">${fxLight?'Меньше эффектов':'Эффекты'}</button><button class="b-skip">Пропустить</button></div>
@@ -3105,6 +3139,138 @@ function testBuy(price,name,fn){
   [{t:'Отмена',c:'gray'},{t:'Купить (тест)',c:'gold',fn:()=>{S.vipSpent+=price;fn();refresh()}}]);
 }
 
+const safeText=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const PROFILE_TONES={violet:['Сумерки','#a98dff'],cyan:['Неон','#6eedf6'],amber:['Янтарь','#ffbe6e']};
+function applyIdentity(){
+  const info=NeonAccounts.active;
+  if(!info?.nickname)return;
+  S.name=info.nickname;S.nickLocked=true;
+  S.profile={avatar:info.avatar,accent:info.accent};
+}
+function openIdentity(onReady,{dismissible=false}={}){
+  const identity=NeonAccounts.active;
+  let mode=identity?.kind==='cloud'?'nickname':'choose';
+  const view=el('<div class="identity-overlay"></div>');
+  $('#app').appendChild(view);
+  const close=()=>view.remove();
+  function finish(){
+    save();close();
+    onReady?.();
+  }
+  function form(){
+    const hasName=S.nickLocked&&NeonAccounts.validNick(S.name);
+    const fieldName=mode==='nickname'||mode==='create'||mode==='guest';
+    const internal=mode==='create'||mode==='login';
+    return `<form class="identity-form">
+      ${fieldName?`<label>Ник в игре<input name="nickname" autocomplete="nickname" maxlength="20" placeholder="Например, Лунный Курьер" required ${hasName&&mode==='create'?'readonly':''} value="${hasName?safeText(S.name):''}"></label>
+        <small>Ник выбирается один раз.</small>`:''}
+      ${internal?`<label>Игровой логин<input name="login" autocomplete="username" inputmode="email" spellcheck="false" autocapitalize="off" maxlength="42" placeholder="neon.runner" required></label>
+        <small>Можно использовать адрес вида neon.runner@neonrift.invalid.</small>
+        <label>Пароль<input type="password" name="password" autocomplete="${mode==='create'?'new-password':'current-password'}" minlength="8" maxlength="128" required></label>`:''}
+      <p class="identity-error" role="alert"></p>
+      <button class="btn gold" type="submit">${mode==='create'?'Создать аккаунт':mode==='login'?'Войти':'Продолжить'}</button>
+      ${mode!=='nickname'?'<button class="btn sm gray identity-back" type="button">← Назад</button>':''}
+    </form>`;
+  }
+  function render(){
+    view.innerHTML=`<section class="identity-card" role="dialog" aria-modal="true" aria-labelledby="identity-title">
+      <h1 id="identity-title">${({choose:'Вход в Неоновый Разлом',create:'Игровой аккаунт',login:'Вход с игровым логином',nickname:'Выберите ник',guest:'Ник курьера'})[mode]}</h1>
+      ${mode==='choose'?`<div class="identity-options">
+        <button class="btn gold" data-mode="create">Создать игровой аккаунт</button>
+        <button class="btn cyan" data-mode="login">Войти с игровым логином</button>
+        <small>Игровой аккаунт хранится на этом устройстве.</small>
+        <div class="identity-social"><button class="btn sm gray" data-oauth="google" ${NeonAccounts.configured?'':'disabled'}>Google</button><button class="btn sm gray" data-oauth="apple" ${NeonAccounts.configured?'':'disabled'}>Apple</button></div>
+        ${NeonAccounts.configured?'':'<small>Google и Apple пока недоступны.</small>'}
+        <button class="btn sm gray" data-mode="guest">Продолжить гостем</button>
+        ${dismissible?'<button class="btn sm gray identity-close">Закрыть</button>':''}
+        <p class="identity-error" role="alert"></p>
+      </div>`:form()}
+    </section>`;
+    const err=$('.identity-error',view);
+    $('.identity-close',view)?.addEventListener('click',close);
+    $('.identity-back',view)?.addEventListener('click',()=>{mode='choose';render()});
+    view.querySelectorAll('[data-mode]').forEach(button=>button.onclick=()=>{
+      mode=button.dataset.mode;
+      if(mode==='guest'&&S.nickLocked){finish();return}
+      render();
+    });
+    view.querySelectorAll('[data-oauth]').forEach(button=>button.onclick=async()=>{
+      button.disabled=true;err.textContent='';
+      try{save();await NeonAccounts.oauth(button.dataset.oauth)}
+      catch(error){err.textContent=error.message;button.disabled=false}
+    });
+    const edit=$('form',view);
+    if(!edit)return;
+    edit.onsubmit=async event=>{
+      event.preventDefault();
+      const input=new FormData(edit);
+      const name=NeonAccounts.nickname(input.get('nickname'));
+      if(mode!=='login'&&!NeonAccounts.validNick(name)){
+        err.textContent='Ник должен содержать 3–20 букв, цифр, пробелов, дефисов или подчёркиваний.';
+        return;
+      }
+      const button=$('[type=submit]',edit);
+      button.disabled=true;err.textContent='';
+      try{
+        if(mode==='create'){
+          const progress=JSON.stringify({...S,name,nickLocked:true});
+          await NeonAccounts.deviceSignUp(NeonAccounts.normalizeLogin(input.get('login')),String(input.get('password')),name,progress);
+          sessionStorage.setItem('neon_auto_enter','1');location.reload();return;
+        }
+        if(mode==='login'){
+          await NeonAccounts.deviceSignIn(NeonAccounts.normalizeLogin(input.get('login')),String(input.get('password')));
+          sessionStorage.setItem('neon_auto_enter','1');location.reload();return;
+        }
+        if(mode==='nickname')await NeonAccounts.setNickname(name);
+        S.name=name;S.nickLocked=true;finish();
+      }catch(error){
+        err.textContent=error.message||'Не удалось завершить вход.';
+        button.disabled=false;
+      }
+    };
+  }
+  render();
+}
+
+function openPlayerProfile(){
+  const identity=NeonAccounts.active;
+  let avatar=HMAP[S.profile?.avatar]?S.profile.avatar:S.team.find(Boolean)||'pixel';
+  let accent=PROFILE_TONES[S.profile?.accent]?S.profile.accent:'violet';
+  const view=el('<div class="identity-overlay"></div>');
+  $('#app').appendChild(view);
+  function render(){
+    view.innerHTML=`<section class="identity-card player-card" role="dialog" aria-modal="true" aria-labelledby="player-title" style="--profile-accent:${PROFILE_TONES[accent][1]}">
+      <header><img class="profile-avatar" src="${heroImg(avatar)}" alt=""><div><h1 id="player-title">${safeText(S.name)}</h1><small>${identity?.kind==='device'?safeText(identity.login+'@neonrift.invalid'):identity?'Облачный аккаунт':'Гость'} · Уровень ${S.plvl}</small></div></header>
+      <h2>Аватар</h2><div class="profile-avatars" role="group" aria-label="Аватар">${Object.keys(S.heroes).map(id=>`<button type="button" data-avatar="${id}" aria-label="${HMAP[id].name}" aria-pressed="${avatar===id}"><img src="${heroImg(id)}" alt=""></button>`).join('')}</div>
+      <h2>Цвет профиля</h2><div class="profile-tones" role="group" aria-label="Цвет профиля">${Object.entries(PROFILE_TONES).map(([key,[label,color]])=>`<button type="button" data-accent="${key}" aria-pressed="${accent===key}" style="--choice:${color}">${label}</button>`).join('')}</div>
+      <p class="identity-error" role="alert"></p><button class="btn gold keep-profile">Сохранить оформление</button>
+      <div class="profile-footer"><button class="btn gray sm close-profile">Закрыть</button>${identity?'<button class="btn gray sm logout">Выйти</button>':'<button class="btn cyan sm login">Войти или создать аккаунт</button>'}</div>
+    </section>`;
+    view.querySelectorAll('[data-avatar]').forEach(b=>b.onclick=()=>{avatar=b.dataset.avatar;render()});
+    view.querySelectorAll('[data-accent]').forEach(b=>b.onclick=()=>{accent=b.dataset.accent;render()});
+    $('.close-profile',view).onclick=()=>view.remove();
+    $('.keep-profile',view).onclick=async event=>{
+      const button=event.currentTarget;
+      button.disabled=true;
+      try{
+        await NeonAccounts.customize(avatar,accent);
+        S.profile={avatar,accent};
+        save();renderTop();view.remove();
+      }catch(error){$('.identity-error',view).textContent=error.message;button.disabled=false}
+    };
+    const signIn=$('.login',view);
+    if(signIn)signIn.onclick=()=>{view.remove();openIdentity(null,{dismissible:true})};
+    const logOut=$('.logout',view);
+    if(logOut)logOut.onclick=async event=>{
+      const button=event.currentTarget;
+      button.disabled=true;
+      try{save();await NeonAccounts.signOut();location.reload()}
+      catch(error){$('.identity-error',view).textContent=error.message;button.disabled=false}
+    };
+  }
+  render();
+}
+
 // ---------- shell ----------
 function renderShell(){
   $('#app').innerHTML=`<div id="screen"></div><div id="top"></div><nav id="nav"></nav><div id="toast"></div>`;
@@ -3113,10 +3279,12 @@ function renderShell(){
   $('#nav').querySelectorAll('button').forEach(b=>b.onclick=()=>{SFX.click();go(b.dataset.k)});
 }
 function renderTop(){
-  const lead=S.team.find(Boolean)||'pixel';const need=S.plvl*120;
-  $('#top').innerHTML=`<div class="ava"><img src="${heroImg(lead)}"><b>${S.plvl}</b></div>
-  <div class="pinfo"><span class="nm">${S.name} <span class="mut">VIP ${vipLevel()}</span></span><span class="pw">⚔ ${fmt(teamPower())}</span><div class="bar" style="height:4px"><i style="width:${S.pxp/need*100}%"></i></div></div>
+  const lead=HMAP[S.profile?.avatar]?S.profile.avatar:S.team.find(Boolean)||'pixel';const need=S.plvl*120;
+  const tone=(PROFILE_TONES[S.profile?.accent]||PROFILE_TONES.violet)[1];
+  $('#top').innerHTML=`<button class="ava player-profile" type="button" aria-label="Профиль игрока" style="--player-tone:${tone}"><img src="${heroImg(lead)}" alt=""><b>${S.plvl}</b></button>
+  <div class="pinfo"><span class="nm">${safeText(S.name)} <span class="mut">VIP ${vipLevel()}</span></span><span class="pw">⚔ ${fmt(teamPower())}</span><div class="bar" style="height:4px"><i style="width:${S.pxp/need*100}%"></i></div></div>
   <div class="cur">${ICON.svg('coin')}<b>${fmt(S.gold)}</b></div><div class="cur">${ICON.svg('gem')}<b>${fmt(S.gems)}</b><span class="p" data-go="shop">+</span></div><div class="cur" data-go="summon">${ICON.svg('ticket')}<b>${fmt(S.tickets)}</b></div>`;
+  $('.player-profile').onclick=openPlayerProfile;
   $('#top').querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>b.dataset.go==='summon'?openSummon():go('shop'));
   // red dots
   const dots={camp:afkPending().mins>=60,heroes:canUpgradeAny(),sprites:S.daily.freeSprite,city:S.daily.freeHero||questReady()};
@@ -3212,15 +3380,15 @@ async function startStage(){
 // ---------- CAMP ----------
 function scrCamp(sc){
   const team=S.team.filter(Boolean).map(id=>({...HMAP[id],color:ELEM[HMAP[id].el].c}));
-  const wrap=el('<div class="scene"><canvas aria-hidden="true"></canvas></div>');
+  const wrap=el('<div class="scene camp-land"><canvas aria-hidden="true"></canvas></div>');
   const p=el('<section class="camp-rewards" aria-label="Доход лагеря"></section>');
   sc.append(wrap,p);
-  const cv=$('canvas',wrap),patrol=CampPatrol.create(cv,team,S.stage,p);
+  const cv=$('canvas',wrap),patrol=CampPatrol.create(cv,team,S.stage);
   const motion=matchMedia('(prefers-reduced-motion: reduce)');
   let last=-Infinity,navHeight=0;
   const loop=t=>{
     if(!cv.isConnected)return;
-    if(t-last>=(motion.matches?160:30)&&!$('.hd2')){
+    if(t-last>=(motion.matches?160:15.5)&&!$('.hd2,.identity-overlay')){
       const height=$('#nav').offsetHeight;
       if(height!==navHeight){
         navHeight=height;
@@ -3785,7 +3953,7 @@ function openArena(){
   if(modeLock('arena'))return;if(!teamCheck())return;
   const o=el(`<div class="gacha" style="background:linear-gradient(rgba(10,4,30,.1),rgba(10,4,30,.35)),url(art/bg_arena_lobby.webp) center top/cover"></div>`);$('#app').appendChild(o);
   let opps=null;const gen=()=>{const p=teamPower();opps=[.8,1,1.18].map((k,i)=>({name:pick(BOT_NAMES),pts:S.arena.pts+Math.round((k-1)*200)+ri(-20,20),power:Math.round(p*k*rnd(.95,1.05)),team:null,k}));opps.forEach(op=>{op.team=botTeam(op.power)})};gen();
-  const render=()=>{const lb=BOT_NAMES.slice(0,9).map((n,i)=>({n,pts:2600-i*170})).concat([{n:S.name+' (вы)',pts:S.arena.pts,me:1}]).sort((a,b)=>b.pts-a.pts);
+  const render=()=>{const lb=BOT_NAMES.slice(0,9).map((n,i)=>({n,pts:2600-i*170})).concat([{n:safeText(S.name)+' (вы)',pts:S.arena.pts,me:1}]).sort((a,b)=>b.pts-a.pts);
     o.innerHTML=`<div class="row" style="margin-bottom:10px"><button class="btn sm gray back">← Назад</button><span class="sp"></span><span class="chip">Попыток: ${S.daily.arena}/5</span></div>
     <div style="text-align:center"><div style="width:64px;height:64px;margin:0 auto">${ICON.svg('trophy')}</div><div class="title-neon" style="font-size:22px">Арена Неона</div><div class="mut">Ваш рейтинг: <b style="color:var(--gold)">${S.arena.pts}</b> · место ${lb.findIndex(x=>x.me)+1}</div></div>
     <div class="row" style="margin:10px 0"><div class="h2 sp">Соперники</div><button class="btn sm cyan rf">🔄 Обновить</button></div>
@@ -3810,7 +3978,7 @@ function openGuild(){
     <div class="card row" style="background:linear-gradient(120deg,#1a4a7a,#3a1a6a)"><div style="font-size:40px">🐱</div><div class="sp"><b style="font-size:18px">Неоновые Кошки</b><div class="mut">Ур. 7 · 9/30 участников · Глава: Aurora</div></div></div>
     <div class="tabs">${[['boss','Босс'],['tree','Навыки'],['shop','Лавка'],['mem','Участники']].map(([k,n])=>`<button data-t="${k}" class="${gTab===k?'on':''}">${n}</button>`).join('')}</div><div class="body"></div>`;
     o.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{gTab=b.dataset.t;render()});$('.back',o).onclick=()=>{o.remove();refresh()};const B=$('.body',o);
-    if(gTab==='boss'){const rank=bots.map(b=>({n:b.n,d:b.dmg})).concat([{n:S.name+' (вы)',d:S.guild.best,me:1}]).sort((a,b)=>b.d-a.d);
+    if(gTab==='boss'){const rank=bots.map(b=>({n:b.n,d:b.dmg})).concat([{n:safeText(S.name)+' (вы)',d:S.guild.best,me:1}]).sort((a,b)=>b.d-a.d);
       B.innerHTML=`<div class="card" style="text-align:center;background:radial-gradient(circle,#4a0a1a,#120a2a)"><img src="${ART.url('m:golem#ff2a4a',()=>ART.monster('golem','#ff2a4a'))}" style="width:130px;filter:drop-shadow(0 0 16px #ff2a4a)"><div class="title-neon" style="font-size:18px">Пожиратель Сети</div><div class="mut">6 раундов · наносите максимум урона · награда зависит от урона</div><button class="btn pink atk" style="width:100%;margin-top:8px">Атаковать (${S.daily.guildTries}/2)</button></div>
       <div class="h2">Рейтинг урона сегодня</div>${rank.map((x,i)=>`<div class="li" style="${x.me?'border-color:var(--pink)':''}"><b style="width:22px">${i+1}</b><div class="tx"><b>${x.n}</b></div><span style="color:var(--gold)">${fmt(x.d)}</span></div>`).join('')}`;
       $('.atk',B).onclick=async()=>{if(S.daily.guildTries<=0){toast('Попытки закончились');return}S.daily.guildTries--;const p=teamPower();const boss=monsterUnit(Math.max(5,Math.round(S.stage*1.3)),true,'fire');boss.mon='golem';boss.col='#ff2a4a';boss.name='Пожиратель Сети';boss.st.hp=Math.round(p*40);boss.st.atk=Math.round(p*.004);boss.st.def=50;
@@ -3822,7 +3990,7 @@ function openGuild(){
     if(gTab==='shop'){const items=[{n:'5 билетов призыва',c:400,it:{tickets:5}},{n:'5 ядер спрайтов',c:400,it:{cores:5}},{n:'10 UR-осколков',c:900,it:{urShard:10}},{n:'Фиолетовое снаряжение',c:300,it:{gear:['w3','a3','h3','b3']}},{n:'200 000 золота',c:150,it:{gold:200000}}];
       B.innerHTML=items.map((x,i)=>`<div class="li"><div class="tx"><b>${x.n}</b></div><button class="btn sm ${S.guildCoins>=x.c?'gold':'gray'}" data-i="${i}">🏅${x.c}</button></div>`).join('');
       B.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{const x=items[+b.dataset.i];if(S.guildCoins<x.c){toast('Не хватает жетонов');return}S.guildCoins-=x.c;showRewards(grant(x.it));render();renderTop()})}
-    if(gTab==='mem'){B.innerHTML=bots.concat([{n:S.name,role:'Участник',pow:teamPower()}]).map(b=>`<div class="li"><div class="ic">👤</div><div class="tx"><b>${b.n}</b><small>${b.role}</small></div><span style="color:var(--gold)">⚔ ${fmt(b.pow)}</span></div>`).join('')}
+    if(gTab==='mem'){B.innerHTML=bots.concat([{n:safeText(S.name),role:'Участник',pow:teamPower()}]).map(b=>`<div class="li"><div class="ic">👤</div><div class="tx"><b>${b.n}</b><small>${b.role}</small></div><span style="color:var(--gold)">⚔ ${fmt(b.pow)}</span></div>`).join('')}
   };render();
 }
 
@@ -3988,6 +4156,7 @@ function openFormation(){let filt='all';
     o.querySelectorAll('.fh').forEach(h=>h.onclick=()=>{const id=h.dataset.id;const i=S.team.indexOf(id);if(i>=0)S.team[i]=null;else{const e=S.team.findIndex(x=>!x);if(e>=0)S.team[e]=id;else if(S.team.length<5)S.team.push(id);else{toast('Отряд полон: убери героя со сцены');return}}SFX.click();save();render()})};render()}
 async function boot(){
   Object.entries(ART_FILES.hero).forEach(([id,k])=>ART.override('h:'+id,'art/hero_'+id+'.webp',k));Object.entries(ART_FILES.back||{}).forEach(([id,k])=>ART.override('hb:'+id,'art/hero_'+id+'_back.webp',k));Object.entries(ART_FILES.enemy).forEach(([id,k])=>ART.enemyOverride(id,'art/enemy_'+id+'.webp',k));Object.entries(ART_FILES.sprite).forEach(([id,k])=>ART.override('s:'+id,'art/sprite_'+id+'.webp',k));
+  const session=await NeonAccounts.restore();
   load();if(!S.giftAwk){S.giftAwk=1;S.awk=(S.awk||0)+40;save()}if(!S.giftItems){S.giftItems=1;const I=inv();I.imp0=(I.imp0||0)+2;I.chip0=(I.chip0||0)+3;I.rs0=(I.rs0||0)+10;I.rs1=(I.rs1||0)+10;save()}if(!S.giftSilas){S.giftSilas=1;if(!S.heroes.silas)S.heroes.silas={lvl:10,star:HeroRank.starter,shards:0,gear:{}};save()}renderShell();
   const L=el(`<div class="loading title2"><div class="title-world" aria-hidden="true"></div><div class="title-shade" aria-hidden="true"></div><canvas class="tcv" aria-hidden="true"></canvas><div class="title-transition" aria-hidden="true"></div><div class="logo"><b>НЕОНОВЫЙ<br>РАЗЛОМ</b><span class="shn" aria-hidden="true">НЕОНОВЫЙ<br>РАЗЛОМ</span><small>4096 ПРИЗЫВОВ</small></div><button class="btn gold tbtn">Играть</button></div>`);
   $('#app').appendChild(L);
@@ -4001,15 +4170,25 @@ async function boot(){
   SPRITES.forEach(s=>ART.get('s:'+s.id,()=>ART.sprite(s)));
   MON.forEach(m=>[...Object.values(ECOL),'#ff2a4a'].forEach(c=>ART.get('m:'+m.t+c,()=>ART.monster(m.t,c))));
   const play=$('button',L);
-  play.onclick=async()=>{
-    play.disabled=true;
-    SFX.click();
-    await Promise.race([prepare,new Promise(resolve=>setTimeout(resolve,1800))]);
-    stopTitle();L.remove();go('city');
-    if(saveNotice)toast(saveNotice);
+  const enter=()=>{
+    L.remove();go('city');
+    if(saveNotice||session?.error)toast(saveNotice||session.error);
     if(!S.tut2){S.tut=1;S.tut2=0;save();setTimeout(()=>TUT.start(),400)}
     else if(S.login.pending)openLogin();
   };
+  play.onclick=async()=>{
+    play.disabled=true;
+    SFX.click();
+    stopTitle();
+    await Promise.race([prepare,new Promise(resolve=>setTimeout(resolve,1800))]);
+    if(!S.nickLocked||NeonAccounts.active&&!NeonAccounts.active.nickname)openIdentity(enter);
+    else enter();
+  };
+  window.addEventListener('neon-save-conflict',()=>toast('Прогресс на сервере обновился. Локальная копия сохранена.'));
+  if(NeonAccounts.active?.nickname&&sessionStorage.getItem('neon_auto_enter')==='1'){
+    sessionStorage.removeItem('neon_auto_enter');play.click();
+  }
+
 }
 window.addEventListener('DOMContentLoaded',boot);
 // ---- replace leftover emoji with painted SVG icons everywhere in the UI ----

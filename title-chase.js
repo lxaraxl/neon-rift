@@ -1,12 +1,11 @@
 const TitleChase = (() => {
-  const duration=7400;
+  const duration=8600;
   const fps=60;
-  const zoom=1.26;
   const chase=[
-    {id:'astra',x:.11,y:.010,size:.82,phase:115,color:'#ffd687'},
-    {id:'pixel',x:.24,y:.047,size:.76,phase:245,color:'#68f2ff'},
-    {id:'volta',x:.35,y:-.027,size:.78,phase:310,color:'#3ad1ff'},
-    {id:'silas',x:.48,y:.024,size:.92,phase:20,color:'#a0eaff'},
+    {id:'astra',x:.11,y:-.004,phase:115,color:'#ffd687'},
+    {id:'pixel',x:.25,y:.014,phase:245,color:'#68f2ff'},
+    {id:'volta',x:.34,y:-.029,phase:310,color:'#3ad1ff'},
+    {id:'silas',x:.50,y:.007,phase:20,color:'#a0eaff'},
   ];
   const motes=Array.from({length:18},(_,i)=>({
     x:(.618*i)%1,y:(.439*i)%1,speed:.07+(i%5)*.024,phase:i*.73,
@@ -29,10 +28,10 @@ const TitleChase = (() => {
     const g=canvas.getContext('2d');
     const image=new Image();
     image.fetchPriority='high';
-    image.src='art/bg_title.webp';
+    image.src='art/bg_title_city.webp';
     const motion=matchMedia('(prefers-reduced-motion: reduce)');
     const startTime=performance.now();
-    let width=0,height=0,scale=1,raf;
+    let width=0,height=0,scale=1,raf,tile=0;
     let staticReady=false,lastFrame=-1;
     let clientWidth=canvas.clientWidth,clientHeight=canvas.clientHeight;
     const resize=new ResizeObserver(([entry])=>{
@@ -48,8 +47,12 @@ const TitleChase = (() => {
       const d=Math.min(1.75,devicePixelRatio||1);
       const w=Math.round(clientWidth*d),h=Math.round(clientHeight*d);
       if(!w||!h)return false;
-      if(width===w&&height===h)return true;
+      const tileWidth=clientHeight*.86*(image.naturalWidth/image.naturalHeight||3);
+      if(width===w&&height===h&&tile===tileWidth)return true;
       width=canvas.width=w;height=canvas.height=h;scale=d;
+      tile=tileWidth;
+      world.style.width=Math.ceil(tile*2+clientWidth)+'px';
+      world.style.backgroundSize=tile+'px 100%';
       staticReady=false;lastFrame=-1;
       return true;
     }
@@ -63,14 +66,14 @@ const TitleChase = (() => {
       g.fillStyle=wash;g.fillRect(0,ground-height*.11,width,height*.21);
       g.lineCap='round';
       g.globalCompositeOperation='screen';
-      for(let i=0;i<16;i++){
-        const lane=i%4;
-        const x=(frac(i*.382-distance*(1+lane*.42))*1.2-.1)*width;
-        const y=ground-height*.042+lane*height*.027+Math.sin(i*4.67)*height*.004;
-        g.globalAlpha=.18+lane*.042;
-        g.strokeStyle=i%3?'#da79ff':'#65d9ff';
-        g.lineWidth=(.55+lane*.35)*scale;
-        g.beginPath();g.moveTo(x,y);g.lineTo(x+width*(.022+lane*.022),y);g.stroke();
+      for(let i=0;i<12;i++){
+        const lane=i%3;
+        const x=(frac(i*.382-distance*(1.6+lane*.35))*1.2-.1)*width;
+        const y=ground-height*.02+lane*height*.014;
+        g.globalAlpha=.16+lane*.06;
+        g.strokeStyle=i%3?'#f284e6':'#65d9ff';
+        g.lineWidth=(.55+lane*.42)*scale;
+        g.beginPath();g.moveTo(x,y);g.lineTo(x+width*(.025+lane*.025),y);g.stroke();
       }
       g.restore();
     }
@@ -129,12 +132,13 @@ const TitleChase = (() => {
       if(lastFrame===shot.frame&&!reduced)return;
       lastFrame=shot.frame;
       const {q,distance,escape,veil}=shot;
-      world.style.transform=`translate3d(${reduced?0:11-distance*22}%,0,0) scale(${zoom})`;
+      const travel=width*(.31+distance*2.35);
+      world.style.transform=`translate3d(${-(travel/scale%tile)}px,0,0)`;
       transition.style.opacity=reduced?0:veil;
-      const ground=BattleLayout.titleGround(width,height,image,zoom);
-      const h=Math.min(width*.224,height*.126);
+      const ground=height*.741;
+      const h=Math.min(width*.183,height*.098);
       const advance=ease(q/.33);
-      const bossHeight=h*1.68;
+      const bossHeight=h*1.52;
       const rightEdge=width-bossHeight*.59;
       const bossX=Math.min(rightEdge,width*(.705+advance*.049+escape*.18)+Math.sin(t/705)*width*.011);
       const bossY=ground-height*.008;
@@ -148,12 +152,12 @@ const TitleChase = (() => {
       sparks(t,ground,bossX);
       figure('mob-golem','front',reduced?'idle':'run',bossX,bossY,bossHeight*(1-escape*.23),t*.81,fade*(1-escape*.72),'#ff687a');
       for(const actor of chase){
-        const stride=Math.sin(t/695+actor.phase)*width*.012;
-        const body=h*actor.size;
-        const desired=width*(actor.x+advance*.11+escape*.25-(1-approach)*.065)+stride;
+        const body=h;
+        const desired=width*(actor.x+advance*.095+escape*.25-(1-approach)*.060);
         const x=Math.min(width-body*.62,Math.max(body*.62,desired));
-        const y=ground+height*actor.y*.65;
-        figure(actor.id,'right',reduced?'idle':'run',x,y,body,t+actor.phase,fade,actor.color);
+        const y=ground+height*actor.y;
+        const steps=CombatAnimation.strideTime(travel+width*(advance*.095+escape*.25),body,'run')+actor.phase;
+        figure(actor.id,'right',reduced?'idle':'run',x,y,body,steps,fade,actor.color);
       }
       if(reduced)staticReady=true;
     }

@@ -1,163 +1,156 @@
 const CampPatrol = (() => {
-  const cycle=5900;
+  const cycle=5600;
   const enemies=['golem','slime','bot','ghost','bat'];
-  const colors=['#df6c77','#59bde2','#be75ee','#eab05a'];
-  const slots=[[.65,.61],[.76,.52],[.77,.70],[.25,.54],[.53,.47]];
+  // Coordinates are on the painted road, from each gate to the courtyard.
+  const routes=[
+    [[.89,.346],[.78,.374],[.701,.411],[.664,.460],[.677,.521],[.594,.557]],
+    [[.101,.654],[.176,.609],[.227,.565],[.245,.524],[.344,.532],[.433,.567]],
+  ];
+  const posts=[[.483,.614],[.680,.608],[.593,.676],[.389,.467],[.495,.480]];
   const clamp=q=>Math.max(0,Math.min(1,q));
   const ease=q=>{q=clamp(q);return q*q*(3-2*q);};
   const mix=(a,b,p)=>a+(b-a)*p;
+  const distance=(a,b)=>Math.hypot(b.x-a.x,b.y-a.y);
+  const facing=(actor,a,b)=>CombatAnimation.facing(actor.id,b.x-a.x,b.y-a.y,actor.facing);
 
-  function create(canvas,team,stage,rewardPanel){
-    const g=canvas.getContext('2d',{alpha:false});
+  function path(points){
+    const lengths=[0];
+    for(let i=1;i<points.length;i++)lengths.push(lengths.at(-1)+distance(points[i-1],points[i]));
+    const total=lengths.at(-1);
+    function at(q){
+      const travelled=clamp(q)*total;
+      let i=1;
+      while(i<lengths.length-1&&travelled>lengths[i])i++;
+      const p=(travelled-lengths[i-1])/(lengths[i]-lengths[i-1]||1);
+      const a=points[i-1],b=points[i];
+      return {x:mix(a.x,b.x,p),y:mix(a.y,b.y,p),dx:b.x-a.x,dy:b.y-a.y};
+    }
+    return {at,total};
+  }
+
+  function create(canvas,team,stage){
+    const g=canvas.getContext('2d');
     const reduced=matchMedia('(prefers-reduced-motion: reduce)');
-    let start=null,base,painted=null, fireX,fireY, drawn=[];
-    const leader=team.findIndex(hero=>hero.cls==='war'||hero.cls==='tank');
-    const support=team.findIndex((hero,i)=>i!==leader&&!['war','tank'].includes(hero.cls));
-    const attacker=leader<0?0:leader;
-    const actors=team.map((hero,i)=>({hero,slot:slots[(i-attacker+team.length)%team.length]}));
-    const monster=wave=>enemies[((stage-1+wave)%enemies.length+enemies.length)%enemies.length];
-
-    LOC.loadBgs(['camp']);
-    for(const {hero} of actors)CombatAnimation.preload(hero.id,'left');
-    if(actors.length){
-      CombatAnimation.preload('mob-'+monster(0),'front');
-      CombatAnimation.preload(actors[attacker].hero.id,'left',['motion','clash']);
-    }
-
+    let start=null,w=0,h=0,scene,drawn=[],lastWave=-1;
+    const lead=team.findIndex(hero=>['war','tank'].includes(hero.cls));
+    const front=lead<0?0:lead;
+    const actors=team.map((hero,i)=>({hero,id:hero.id,slot:posts[(i-front+team.length)%team.length]}));
+    const shooter=actors.findIndex((a,i)=>i!==front&&!['war','tank'].includes(a.hero.cls));
+    const monster=wave=>enemies[(Math.max(0,stage-1)+wave)%enemies.length];
     function fit(){
-      const rect=canvas.getBoundingClientRect(), ratio=Math.min(2,devicePixelRatio||1);
-      const w=Math.max(1,Math.round(rect.width*ratio)),h=Math.max(1,Math.round(rect.height*ratio));
-      const art=LOC.BGIMG.camp||null;
-      if(base&&w===canvas.width&&h===canvas.height&&art===painted)return false;
-      canvas.width=w;canvas.height=h;painted=art;
-      base=LOC.fromImage('camp',w,h,{n1:'#ff9a3a',n2:'#ffd84a'},'forest')||LOC.forest(w,h,Math.round(h*.30));
-      const cover=art?Math.max(w/art.width,h/art.height):0;
-      fireX=w*.5;
-      fireY=art?h*.5+art.height*cover*(.387-.5):h*.43;
-      return true;
+      const dpr=Math.min(1.65,devicePixelRatio||1);
+      const width=Math.round(canvas.clientWidth*dpr),height=Math.round(canvas.clientHeight*dpr);
+      if(w===width&&h===height)return;
+      w=canvas.width=width;h=canvas.height=height;
+      const sw=Math.max(w,h*2/3),sh=sw*1.5;
+      const place=([x,y])=>({x:(w-sw)*.5+x*sw,y:(h-sh)*.5+y*sh});
+      scene={size:Math.min(w*.169,h*.108),fire:place([.258,.35]),
+        homes:actors.map(a=>place(a.slot)),paths:routes.map(road=>path(road.map(place)))};
     }
-
     function silhouette(o){
+      const {x,y,h,id,action,progress,elapsed,alpha,angle}=o;
+      g.save();g.translate(x,y);
+      g.globalAlpha=alpha*.40;
+      g.fillStyle='#281622';
+      g.beginPath();g.ellipse(0,1,h*.27,h*.060,0,0,Math.PI*2);g.fill();
+      g.globalAlpha=alpha;
       g.save();
-      g.translate(o.x,o.y);
-      g.globalAlpha=o.alpha*.31;
-      g.fillStyle='#281521';
-      g.beginPath();g.ellipse(0,0,o.h*.29,o.h*.062,0,0,Math.PI*2);g.fill();
-      g.globalAlpha=o.alpha;
-      CombatAnimation.draw(g,o.id,o.view,o.action,o.elapsed,o.progress,o.h);
+      if(o.facing.flip)g.scale(-1,1);
+      CombatAnimation.draw(g,id,o.facing.view,action,elapsed,progress,h,o.tint);
+      g.restore();
+      if(!reduced.matches&&o.hero)CombatAnimation.effect(g,action,elapsed,progress,h,o.hero.color,angle,o.hero.cls);
       g.restore();
     }
 
-    function trail(from,target,p,color){
-      const x=mix(from.x,target.x,p),y=mix(from.y-from.h*.55,target.y-target.h*.42,p)-Math.sin(p*Math.PI)*from.h*.15;
-      const size=from.h*.085;
-      g.save();
-      g.globalCompositeOperation='screen';
-      g.lineCap='round';
-      g.strokeStyle=color;
-      g.globalAlpha=.82;
-      g.lineWidth=size*.60;
-      g.beginPath();g.moveTo(x,y);g.lineTo(x-Math.sign(target.x-from.x)*size*3.2,y+size*.14);g.stroke();
-      g.fillStyle='#fff5dc';
-      g.beginPath();g.arc(x,y,size*.49,0,Math.PI*2);g.fill();
-      g.restore();
+    function projectile(from,to,p,color){
+      const x=mix(from.x,to.x,p),y=mix(from.y-from.h*.53,to.y-to.h*.40,p)-Math.sin(p*Math.PI)*from.h*.20;
+      const r=from.h*.13;
+      g.save();g.globalCompositeOperation='screen';
+      g.drawImage(PERF.glow(color),x-r*1.8,y-r*1.8,r*3.6,r*3.6);
+      g.fillStyle='#fff3da';g.beginPath();g.arc(x,y,r*.42,0,Math.PI*2);g.fill();g.restore();
     }
-
     function impact(enemy,p,color){
-      g.save();
-      g.translate(enemy.x,enemy.y-enemy.h*.40);
-      g.globalCompositeOperation='screen';
-      g.lineCap='round';g.strokeStyle=color;
-      g.globalAlpha=(1-p)*.86;
-      g.lineWidth=Math.max(1,enemy.h*.037*(1-p));
-      for(let i=0;i<8;i++){
-        const a=i*Math.PI*.25;
-        const d=enemy.h*(.12+.52*p), l=enemy.h*(.08+.16*(1-p));
-        const x=Math.cos(a), y=Math.sin(a)*.75;
-        g.beginPath();g.moveTo(x*d,y*d);g.lineTo(x*(d+l),y*(d+l));g.stroke();
-      }
-      g.restore();
+      const y=enemy.y-enemy.h*.47, r=enemy.h*(.26+.69*p);
+      g.save();g.globalAlpha=1-p;g.globalCompositeOperation='screen';
+      g.drawImage(PERF.glow(color),enemy.x-r,y-r,r*2,r*2);
+      g.lineWidth=Math.max(1,enemy.h*.022);g.strokeStyle=color;
+      g.beginPath();g.ellipse(enemy.x,y,r*.87,r*.48,0,0,Math.PI*2);g.stroke();g.restore();
     }
 
     function draw(now){
       fit();
-      const still=reduced.matches;
+      if(!scene||!w||!h)return;
       if(start===null)start=now;
-      const time=still?3400:now-start+760;
-      const wave=Math.floor(time/cycle), phase=time%cycle;
-      const w=canvas.width,h=canvas.height;
-      const rect=canvas.getBoundingClientRect(),box=rewardPanel.getBoundingClientRect();
-      const hud=box.height? (box.top-rect.top)*h/Math.max(1,rect.height):h*.78;
-      const laneBottom=Math.max(h*.46,Math.min(h*.76,hud-h*.020));
-      const laneTop=Math.max(h*.34,Math.min(laneBottom-h*.12,fireY+h*.055));
-      const size=Math.min(w*.209,h*.116);
-      const floor=value=>mix(laneTop,laneBottom,clamp((value-.45)/.27));
-      g.drawImage(base,0,0);
-      g.imageSmoothingQuality='medium';
+      const still=reduced.matches;
+      const time=still?1300:now-start+720;
+      const wave=Math.floor(time/cycle), t=time%cycle;
+      const {size,homes,paths,fire}=scene;
+      const road=paths[wave%2], walking=t<1850, travelled=clamp(t/1850);
+      const entry=road.at(travelled), meeting=road.at(1), id='mob-'+monster(wave);
+      const leadHome=homes[front];
+      const target=leadHome?{x:mix(meeting.x,leadHome.x,.39),y:mix(meeting.y,leadHome.y,.39)}:meeting;
+      const hitAt=3190,fallAt=3920;
+      const enemy={...entry,id,facing:{view:'front',flip:entry.dx<0},h:size,
+        alpha:ease(t/400)*(1-ease((t-fallAt)/760)),angle:0,progress:0,elapsed:time,tint:wave%2?'#e77969':undefined,
+        action:walking?'walk':'idle'};
+      if(t>=2220&&t<2730){enemy.action='attack';enemy.progress=(t-2220)/510}
+      if(t>=2980&&t<3380){enemy.action='hit';enemy.progress=(t-2980)/400}
+      if(t>=fallAt){enemy.action='die';enemy.progress=clamp((t-fallAt)/760)}
+      if(walking)enemy.elapsed=travelled*road.total/size*1880;
 
-      // A small warm light anchors the fire to the original illustrated camp.
-      const heat=Math.sin(time/177)*.11+.89;
-      g.globalCompositeOperation='screen';
-      g.globalAlpha=.24*heat;
-      g.drawImage(PERF.glow('#ff9447'),fireX-size*.87,fireY-size*1.14,size*1.74,size*1.74);
-      g.globalCompositeOperation='source-over';g.globalAlpha=1;
-
-      const advance=ease((phase-1280)/720),retreat=ease((phase-4120)/1000);
-      const isMelee=actors[attacker]&&['war','tank'].includes(actors[attacker].hero.cls);
-      const enemyId='mob-'+monster(wave);
-      const enemy={id:enemyId,view:'front',x:w*mix(.12,.315,ease(phase/1600)),y:floor(.620),
-        h:size*1.04,elapsed:phase,progress:0,alpha:ease(phase/450),action:phase<1600?'run':'idle'};
-      if(phase>=2100&&phase<2670){enemy.action='attack';enemy.progress=(phase-2100)/570}
-      if(phase>=2680&&phase<3040){enemy.action='hit';enemy.progress=(phase-2680)/360}
-      if(phase>=3370){enemy.action='die';enemy.progress=clamp((phase-3370)/660);enemy.alpha=1-ease(enemy.progress)}
-      const figures=actors.map(({hero,slot},i)=>{
-        const active=i===attacker, ranged=i===support||active&&!isMelee;
-        const pace=(phase+i*890)%cycle;
-        const patrol=!active&&(pace<590||pace>4600&&pace<5310);
-        const shift=active&&isMelee?(advance-retreat)*.184
-          :(.5-.5*Math.cos(pace/cycle*Math.PI*2))*.043;
-        const actor={id:hero.id,view:'left',x:w*(slot[0]-shift),y:floor(slot[1]),
-          h:size*(slot[1]>.64?.96:.86),action:'idle',elapsed:time+i*319,progress:0,alpha:1,hero};
-        actor.angle=Math.atan2(enemy.y-actor.y,enemy.x-actor.x);
-        actor.view=enemy.x<actor.x?'left':'right';
-        if(still)return actor;
-        if(active&&isMelee&&(phase>=1280&&phase<2000||phase>=4120&&phase<5120)){
-          actor.action='run';actor.view=phase<4120?'left':'right';
-        }else if(active&&phase>=2130&&phase<2590&&isMelee){
-          actor.action='block';actor.progress=(phase-2130)/460;
-        }else if(active&&isMelee&&phase>=2430&&phase<2980||ranged&&phase>=2880&&phase<3480){
-          actor.action='attack';actor.progress=active&&isMelee?(phase-2430)/550:(phase-2880)/600;
-        }else if(active&&phase>=3700&&phase<4120){
-          actor.action='victory';actor.elapsed=phase-3700;
-        }else if(patrol){
-          actor.action='walk';actor.view=pace<590?'left':'right';
+      if(wave!==lastWave&&!still){
+        lastWave=wave;
+        CombatAnimation.preload(id,'front');
+        if(leadHome){
+          const leadActor=actors[front];
+          const direction=facing(leadActor,leadHome,meeting);
+          CombatAnimation.preload(leadActor.id,direction.view,['rest','motion','clash']);
+          CombatAnimation.preload(leadActor.id,facing(leadActor,meeting,leadHome).view,['motion']);
         }
+      }
+      const advance=ease((t-1240)/960),returning=t>=4350;
+      const p=returning?1-ease((t-4350)/1130):advance;
+      const activeMelee=lead>=0;
+      const figures=actors.map((a,i)=>{
+        const anchor=homes[i], isLead=i===front, moving=isLead&&activeMelee&&!still;
+        const x=moving?mix(anchor.x,target.x,p):anchor.x;
+        const y=moving?mix(anchor.y,target.y,p):anchor.y;
+        const actor={...a,x,y,h:size,alpha:1,action:'idle',progress:0,elapsed:time+i*347,
+          angle:Math.atan2(enemy.y-y,enemy.x-x)};
+        let heading=facing(a,anchor,meeting);
+        if(moving&&(t>=1240&&t<2200||returning&&p>.005)){
+          actor.action=returning?'walk':'run';
+          heading=returning?facing(a,target,anchor):facing(a,anchor,target);
+          actor.elapsed=CombatAnimation.strideTime(distance(anchor,target)*(returning?1-p:p),size,actor.action);
+        }else if(!still&&isLead&&activeMelee&&t>=2220&&t<2710){
+          actor.action='block';actor.progress=(t-2220)/490;
+        }else if(!still&&(i===shooter||isLead)&&(t>=2740&&t<3440)){
+          actor.action='attack';actor.progress=(t-2740)/700;
+        }
+        a.facing=actor.facing=heading;
         return actor;
       });
       drawn=figures;
-      if(actors.length&&!still&&enemy.alpha>.01)figures.concat(enemy).sort((a,b)=>a.y-b.y).forEach(silhouette);
-      else figures.slice().sort((a,b)=>a.y-b.y).forEach(silhouette);
-
-      if(still||!actors.length)return;
-      for(const actor of figures){
-        g.save();g.translate(actor.x,actor.y);
-        CombatAnimation.effect(g,actor.action,actor.elapsed,actor.progress,actor.h,actor.hero.color,actor.angle,actor.hero.cls);
-        g.restore();
-      }
-      const shooter=figures[support]||(!isMelee?figures[attacker]:null);
-      if(shooter&&phase>=3050&&phase<3380)trail(shooter,enemy,(phase-3050)/330,shooter.hero.color);
-      if(phase>=2680&&phase<2980&&isMelee)impact(enemy,(phase-2680)/300,figures[attacker].hero.color);
-      if(phase>=3370&&phase<3690)impact(enemy,(phase-3370)/320,shooter?.hero.color||colors[wave%colors.length]);
+      g.clearRect(0,0,w,h);
+      g.save();
+      g.globalAlpha=still?.17:.18+.045*Math.sin(time*.014);
+      g.globalCompositeOperation='screen';
+      g.drawImage(PERF.glow('#ff8939'),fire.x-size*.60,fire.y-size*.92,size*1.2,size*1.35);
+      g.restore();
+      const present=figures.length&&!still&&enemy.alpha>.01?[...figures,enemy]:figures;
+      present.sort((a,b)=>a.y-b.y).forEach(silhouette);
+      if(still||!figures.length)return;
+      const ranged=figures[shooter]||(!activeMelee?figures[front]:null);
+      if(ranged&&t>=2890&&t<hitAt)projectile(ranged,enemy,(t-2890)/(hitAt-2890),ranged.hero.color);
+      if(t>=hitAt&&t<hitAt+350)impact(enemy,(t-hitAt)/350,ranged?.hero.color||figures[front].hero.color);
     }
-
     function heroAt(event){
       const rect=canvas.getBoundingClientRect();
       const x=(event.clientX-rect.left)*canvas.width/rect.width;
       const y=(event.clientY-rect.top)*canvas.height/rect.height;
-      return drawn.slice().sort((a,b)=>b.y-a.y).find(o=>Math.abs(x-o.x)<o.h*.37&&y<o.y&&y>o.y-o.h)?.id;
+      return drawn.slice().sort((a,b)=>b.y-a.y).find(o=>Math.abs(x-o.x)<o.h*.43&&y<o.y&&y>o.y-o.h)?.id;
     }
     return {draw,heroAt};
   }
-
   return {create};
 })();

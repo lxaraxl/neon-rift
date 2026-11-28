@@ -111,11 +111,13 @@ const CombatAnimation = (() => {
   function size(hero){
     return hero.startsWith('mob-')||hero.startsWith('companion-')?creatureSize:heroSize;
   }
-  function group(hero,view,name){
-    const {width,height}=size(hero);
-    const weight=width*height*frameCount*groups[name].length;
+  function group(hero,view,name,legacy=false){
+    const dims=size(hero);
+    const stride=dims===heroSize&&name==='motion'&&!legacy;
+    const weight=dims.width*dims.height*frameCount*(stride?2:groups[name].length);
     const revised=name==='motion'||hero==='bastion';
-    return load(atlas[name],`art/combat/${hero}-${view}-${name}.webp?v=${revised?'stride2':'hd1'}`,atlasBudget[name],weight);
+    const source=stride?`art/stride/${hero}-${view}.webp`:`art/combat/${hero}-${view}-${name}.webp?v=${revised?'stride2':'hd1'}`;
+    return load(atlas[name],source,atlasBudget[name],weight);
   }
   function warmTurn(hero){
     return load(turns,`art/combat/${hero}-turn.webp`,48);
@@ -143,6 +145,11 @@ const CombatAnimation = (() => {
       : Math.max(0,Math.min(1,progress||0));
     return Math.min(frameCount-1,Math.floor(phase*frameCount));
   }
+  function strideTime(distance,height,action){
+    const running=action==='run';
+    const span=running?.34/.55:.245/.62;
+    return distance/(Math.max(height,1)*span)*periods[action];
+  }
   function tintedFrame(image,sx,sy,color,cellWidth,cellHeight){
     const key=image.src+'|'+sx+'|'+sy+'|'+color;
     if(tints.has(key))return tints.get(key);
@@ -162,7 +169,7 @@ const CombatAnimation = (() => {
   }
   function draw(g,hero,view,action,time,progress,height,tint){
     const clip = clips.get(action==='tap'?'attack':action) || clips.get('idle');
-    const image = group(hero,view,clip.group).image;
+    const image = group(hero,view,clip.group,action==='fly').image;
     if(image){
       const {width:cellWidth,height:cellHeight,body,foot}=size(hero);
       const frame = frameIndex(action,time,progress);
@@ -269,5 +276,5 @@ const CombatAnimation = (() => {
     g.restore();
   }
 
-  return {frameCount, frameIndex, facing, preload, draw, effect, release};
+  return {frameCount, frameIndex, strideTime, facing, preload, draw, effect, release};
 })();
