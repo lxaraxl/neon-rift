@@ -1,5 +1,7 @@
 const TitleChase = (() => {
   const duration=7400;
+  const fps=60;
+  const zoom=1.26;
   const chase=[
     {id:'astra',x:.11,y:.010,size:.82,phase:115,color:'#ffd687'},
     {id:'pixel',x:.24,y:.047,size:.76,phase:245,color:'#68f2ff'},
@@ -13,7 +15,17 @@ const TitleChase = (() => {
   const ease=q=>{q=clamp(q);return q*q*(3-2*q);};
   const frac=q=>q-Math.floor(q);
 
-  function start(canvas){
+  function camera(time){
+    const frame=Math.floor(time*fps/1000);
+    const q=frac(frame*1000/fps/duration);
+    const escape=ease((q-.74)/.23);
+    // The runners head right. The city and near road both travel left.
+    const distance=q*.82+escape*.18;
+    const veil=1-ease(Math.min(q/.052,(1-q)/.073));
+    return {frame,q,distance,escape,veil};
+  }
+
+  function start(canvas,world,transition){
     const g=canvas.getContext('2d');
     const image=new Image();
     image.fetchPriority='high';
@@ -21,23 +33,28 @@ const TitleChase = (() => {
     const motion=matchMedia('(prefers-reduced-motion: reduce)');
     const startTime=performance.now();
     let width=0,height=0,scale=1,raf;
-    let staticReady=false;
+    let staticReady=false,lastFrame=-1;
+    let clientWidth=canvas.clientWidth,clientHeight=canvas.clientHeight;
+    const resize=new ResizeObserver(([entry])=>{
+      clientWidth=entry.contentRect.width;clientHeight=entry.contentRect.height;
+    });
+    resize.observe(canvas);
     Promise.all([
       ...chase.map(({id})=>CombatAnimation.preload(id,'right',['motion','rest'])),
       CombatAnimation.preload('mob-golem','front',['motion','rest']),
     ]).then(()=>{staticReady=false});
 
     function fit(){
-      const w=canvas.clientWidth,h=canvas.clientHeight;
       const d=Math.min(1.75,devicePixelRatio||1);
+      const w=Math.round(clientWidth*d),h=Math.round(clientHeight*d);
       if(!w||!h)return false;
-      if(width===Math.round(w*d)&&height===Math.round(h*d))return true;
-      width=canvas.width=Math.round(w*d);height=canvas.height=Math.round(h*d);scale=d;
-      staticReady=false;
+      if(width===w&&height===h)return true;
+      width=canvas.width=w;height=canvas.height=h;scale=d;
+      staticReady=false;lastFrame=-1;
       return true;
     }
 
-    function road(t,ground){
+    function road(distance,ground){
       g.save();
       const wash=g.createLinearGradient(0,ground-height*.11,0,ground+height*.10);
       wash.addColorStop(0,'#13072700');
@@ -47,8 +64,8 @@ const TitleChase = (() => {
       g.lineCap='round';
       g.globalCompositeOperation='screen';
       for(let i=0;i<16;i++){
-        const lane=i%4, speed=.18+lane*.025;
-        const x=(frac(i*.382-t*speed/1000)*1.2-.1)*width;
+        const lane=i%4;
+        const x=(frac(i*.382-distance*(1+lane*.42))*1.2-.1)*width;
         const y=ground-height*.042+lane*height*.027+Math.sin(i*4.67)*height*.004;
         g.globalAlpha=.18+lane*.042;
         g.strokeStyle=i%3?'#da79ff':'#65d9ff';
@@ -107,11 +124,15 @@ const TitleChase = (() => {
       raf=requestAnimationFrame(frame);
       const reduced=motion.matches;
       if(!fit()||(reduced&&staticReady&&image.complete))return;
-      const t=reduced?1150:now-startTime;
-      const q=frac(t/duration);
-      const ground=BattleLayout.titleGround(width,height,image);
+      const t=reduced?1150:Math.max(0,now-startTime);
+      const shot=camera(t);
+      if(lastFrame===shot.frame&&!reduced)return;
+      lastFrame=shot.frame;
+      const {q,distance,escape,veil}=shot;
+      world.style.transform=`translate3d(${reduced?0:11-distance*22}%,0,0) scale(${zoom})`;
+      transition.style.opacity=reduced?0:veil;
+      const ground=BattleLayout.titleGround(width,height,image,zoom);
       const h=Math.min(width*.224,height*.126);
-      const escape=ease((q-.74)/.23);
       const advance=ease(q/.33);
       const bossHeight=h*1.68;
       const rightEdge=width-bossHeight*.59;
@@ -122,7 +143,7 @@ const TitleChase = (() => {
       g.imageSmoothingEnabled=true;
       g.imageSmoothingQuality='medium';
       g.clearRect(0,0,width,height);
-      road(t,ground);
+      road(reduced?0:distance,ground);
       portal(rightEdge,bossY,h*1.78,ease((q-.65)/.16)*(1-ease((q-.92)/.08)));
       sparks(t,ground,bossX);
       figure('mob-golem','front',reduced?'idle':'run',bossX,bossY,bossHeight*(1-escape*.23),t*.81,fade*(1-escape*.72),'#ff687a');
@@ -137,7 +158,7 @@ const TitleChase = (() => {
       if(reduced)staticReady=true;
     }
     raf=requestAnimationFrame(frame);
-    return ()=>{cancelAnimationFrame(raf);CombatAnimation.release();};
+    return ()=>{cancelAnimationFrame(raf);resize.disconnect();CombatAnimation.release();};
   }
 
   return {start};

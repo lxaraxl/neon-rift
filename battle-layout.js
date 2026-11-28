@@ -48,9 +48,9 @@ const BattleLayout = (() => {
     return {top,bottom,project,formation};
   }
 
-  function titleGround(w,h,image){
+  function titleGround(w,h,image,zoom=1.13){
     if(!image?.naturalHeight)return h*.81;
-    const scale=Math.max(w/image.naturalWidth,h/image.naturalHeight)*1.13;
+    const scale=Math.max(w/image.naturalWidth,h/image.naturalHeight)*zoom;
     // The near side of the bridge starts just below the buttresses in bg_title.
     return clamp((h-image.naturalHeight*scale)/2+image.naturalHeight*scale*.837,h*.79,h*.83);
   }
