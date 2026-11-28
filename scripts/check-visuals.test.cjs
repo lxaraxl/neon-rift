@@ -13,8 +13,7 @@ test('the core platform holds both formations and their lunge points',()=>{
   const layout=load('battle-layout.js','BattleLayout');
   for(const [width,height] of [[320,580],[430,910],[740,430]]){
     const floor=layout.floor('ch_core',width,height,{width:720,height:1280});
-    for(const side of ['a','e'])for(const row of ['f','b'])for(let i=0;i<3;i++){
-      const home=floor.formation(side,row,i,3,22);
+    for(const side of ['a','e'])for(const home of floor.formation(side,2,3,22)){
       for(const target of [[home.x,home.y],[-90,-10],[width+80,height+140]]){
         const position=floor.project(...target,22);
         assert(position.x>0&&position.x<width);
@@ -24,6 +23,30 @@ test('the core platform holds both formations and their lunge points',()=>{
     const cover=Math.max(width/720,height/1280);
     const mapEdge=height/2+1280*cover*(.72-.5);
     assert(floor.bottom<=height*.83&&floor.bottom<mapEdge);
+  }
+});
+
+test('metro keeps the diagonal formation and gives the companion its own space',()=>{
+  const layout=load('battle-layout.js','BattleLayout');
+  for(const [width,height] of [[320,580],[430,850],[550,1064]]){
+    const floor=layout.floor('ch_metro',width,height,{width:916,height:1717});
+    const ally=floor.formation('a',2,3,width*.053);
+    const enemy=floor.formation('e',2,3,width*.053);
+    assert(ally[0].x<ally[1].x&&ally[0].y<ally[1].y);
+    assert(ally[2].y<ally[3].y&&ally[3].y<ally[4].y);
+    assert(Math.abs(ally[3].x/width-.36)<.055);
+    assert(Math.abs(ally[3].y/height-.766)<.02);
+    assert(Math.max(...enemy.map(p=>p.y))<Math.min(...ally.map(p=>p.y)));
+    const occupied=[...ally,...enemy].map(p=>({...p,height:width*.23,halfWidth:width*.115}));
+    const size=width*.104*1.25;
+    const pet=floor.companion('a',size,occupied);
+    if(width>=430)assert(pet.x<width*.32);
+    assert(pet.y<=floor.bottom);
+    for(const unit of occupied){
+      const separateX=Math.abs(pet.x-unit.x)>size*.59+unit.halfWidth;
+      const separateY=pet.y-size>unit.y||pet.y<unit.y-unit.height;
+      assert(separateX||separateY);
+    }
   }
 });
 

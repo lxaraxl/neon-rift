@@ -520,7 +520,7 @@ button{font:inherit;color:inherit;border:0;cursor:pointer;background:none}
 .b-start{background:radial-gradient(circle,rgba(0,0,0,.15),rgba(0,0,0,.55));animation:bfade 1.15s forwards}
 @keyframes bemb{0%{transform:scale(.3) rotate(-20deg);opacity:0}25%{transform:scale(1.1) rotate(0);opacity:1}75%{transform:scale(1);opacity:1}100%{transform:scale(1.6);opacity:0}}
 @keyframes bfade{0%,70%{opacity:1}100%{opacity:0}}
-.b-meter{top:auto!important;bottom:calc(120px + env(safe-area-inset-bottom));width:64px!important;transform:scale(.85);transform-origin:left bottom}
+.b-meter{top:calc(68px + env(safe-area-inset-top));width:64px;transform:scale(.85);transform-origin:left top}
 
 /* ===== v9 hero card (like reference): full-screen living art + side buttons + bottom panel ===== */
 .hd2{position:absolute;inset:0;z-index:40;overflow:hidden;animation:fade .2s;
@@ -545,14 +545,16 @@ button{font:inherit;color:inherit;border:0;cursor:pointer;background:none}
 .hd2-side button.dot::after{content:'';position:absolute;top:0;right:2px;width:10px;height:10px;border-radius:50%;background:#ff2a4a;box-shadow:0 0 0 2px #fff}
 .hd2-arr{position:absolute;top:42%;z-index:3;width:34px;height:52px;font:900 34px/1 Manrope;color:#ffd24a;background:none;text-shadow:0 0 8px #ff9a1a,0 2px 0 #6a2a00}
 .hd2-arr.l{left:2px}.hd2-arr.r{right:52px}
-.hd2 .mini{position:absolute;left:8px;bottom:calc(238px + env(safe-area-inset-bottom));width:104px;height:112px;z-index:3;cursor:pointer;
+.hd2 .mini{position:absolute;left:8px;bottom:calc(238px + env(safe-area-inset-bottom));width:104px;height:112px;z-index:3;cursor:pointer;touch-action:manipulation;padding:0;
   background:linear-gradient(180deg,rgba(255,255,255,.3),rgba(255,255,255,.12));border:1.5px solid rgba(255,255,255,.8);border-radius:6px;box-shadow:inset 0 0 14px rgba(255,255,255,.25);backdrop-filter:blur(2px)}
 .hd2 .mini i{position:absolute;width:10px;height:10px;border:2px solid #fff6d0}
 .hd2 .mini i:nth-child(1){left:-3px;top:-3px;border-right:0;border-bottom:0}.hd2 .mini i:nth-child(2){right:-3px;top:-3px;border-left:0;border-bottom:0}
 .hd2 .mini i:nth-child(3){left:-3px;bottom:-3px;border-right:0;border-top:0}.hd2 .mini i:nth-child(4){right:-3px;bottom:-3px;border-left:0;border-top:0}
 .hd2 .mini canvas.rigcv{position:absolute;left:0;top:0;width:100%;height:100%}
 .hd2 .mini img{width:100%;height:100%;object-fit:contain}
-.hd2 .mini .tapbub{position:absolute;left:60%;top:-30px;z-index:5;width:max-content;max-width:200px;background:#fff;color:#5a2a0a;font:800 11px Manrope;padding:5px 9px;border-radius:12px;box-shadow:0 0 0 2px #e8a83a,0 3px 6px rgba(0,0,0,.3);animation:bubpop .25s cubic-bezier(.3,1.6,.5,1)}
+.hd2 .mini .tapbub{position:absolute;left:60%;top:-30px;z-index:5;width:max-content;max-width:200px;background:#fff;color:#5a2a0a;font:800 11px Manrope;padding:5px 9px;border-radius:12px;box-shadow:0 0 0 2px #e8a83a,0 3px 6px rgba(0,0,0,.3);animation:bubpop .25s cubic-bezier(.3,1.6,.5,1);pointer-events:none}
+.hd2 .mini:focus-visible{outline:2px solid #fff0ac;outline-offset:4px}
+@media(prefers-reduced-motion:reduce){.hd2 .mini .tapbub{animation:none}}
 .hd2-lv{position:absolute;right:10px;bottom:calc(236px + env(safe-area-inset-bottom));text-align:right;z-index:3;pointer-events:none}
 .hd2-lv .cls{display:inline-block;font:800 10px Manrope;color:#fff;background:rgba(20,10,40,.6);padding:2px 8px;border-radius:8px;margin-bottom:2px}
 .hd2-lv .lv b{font:italic 900 34px Unbounded;color:#fff;-webkit-text-stroke:1.5px #8a3a0a;text-shadow:0 3px 0 #8a3a0a}.hd2-lv .lv small{font:900 14px Unbounded;color:#fff;-webkit-text-stroke:.8px #8a3a0a}
@@ -730,7 +732,7 @@ button{font:inherit;color:inherit;border:0;cursor:pointer;background:none}
   .hd2-lv .pw{font-size:20px}
   .hd2 .mini{bottom:calc(194px + env(safe-area-inset-bottom));width:82px;height:88px}
 }
-</style></head><body><div id="app"></div><script src="miniatures.js"></script><script src="battle-layout.js"></script><script src="combat-animation.js?v=stride2"></script><script src="profile-motion.js?v=portraits"></script><script src="title-chase.js?v=parallax"></script><script src="camp-patrol.js?v=bridge2"></script><script>
+</style></head><body><div id="app"></div><script src="miniatures.js"></script><script src="battle-layout.js?v=diagonal"></script><script src="combat-animation.js?v=stride2"></script><script src="profile-motion.js?v=portraits"></script><script src="title-chase.js?v=parallax"></script><script src="camp-patrol.js?v=bridge2"></script><script>
 // ===== ICONS: hand-made game icons (SVG), no emoji =====
 const ICON=(()=>{
   const G=(id,a,b)=>`<linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>`;
@@ -2459,24 +2461,35 @@ const Battle=(()=>{
     return o;
   }
   let ground,fxLight=false,slowFrames=0,lastDraw=0,lightUntil=0,lastMeter='',battleRAF=0;
+  const footRadius=u=>W*(u.boss?.067:.053);
   function floorPoint(x,y,u){
-    const radius=u?Math.min(W*.091,unitH(u)*.31):0;
-    return ground.project(x,y,radius);
+    return ground.project(x,y,u?footRadius(u):0);
   }
   function layout(){
     ground=BattleLayout.floor(bgType,W,H,LOC.BGIMG[bgType]);
     for(const side of ['a','e']){
       const list=units.filter(u=>u.side===side).sort((p,q)=>CLS[q.cls].front-CLS[p.cls].front);
       const frontCount=list.length<=2?list.length:Math.min(2,Math.ceil(list.length/2.5));
-      for(let i=0;i<list.length;i++){
-        const u=list[i],front=i<frontCount,row=front?'f':'b';
-        const count=front?frontCount:list.length-frontCount;
-        const placement=ground.formation(side,row,front?i:i-frontCount,count,Math.min(W*.105,unitH(u)*.38));
-        u.x=u.renderX=placement.x;
-        u.y=u.renderY=placement.y;
+      const slots=ground.formation(side,frontCount,list.length-frontCount,Math.max(0,...list.map(footRadius)));
+      list.forEach((u,i)=>{
+        const {x,y,row}=slots[i];
+        u.x=u.renderX=x;
+        u.y=u.renderY=y;
         u.row=row;
         u.ps=.86+.28*u.y/H;
-      }
+      });
+    }
+    const occupied=units.map(u=>{
+      const height=unitH(u)*(u.hid?1.27:1);
+      return {x:u.x,y:u.y,height,halfWidth:height*.49};
+    });
+    for(const side of ['a','e']){
+      const sp=sprites[side];
+      if(!sp)continue;
+      sp.height=Math.min(W,H*.6)*.104*(ART_FILES.sprite[sp.d.id]||1);
+      const {x,y}=ground.companion(side,sp.height,occupied);
+      sp.x=x;sp.y=y;
+      occupied.push({x,y,height:sp.height,halfWidth:sp.height*.59});
     }
   }
   function updatePositions(t){
@@ -2543,8 +2556,8 @@ const Battle=(()=>{
   function proj(a,b,color,kind='orb'){if(headless)return Promise.resolve();const dur=260;aimAt(a,b,dur+100);fx.push({k:'proj',x0:a.x,y0:a.y-unitH(a)*.5,x1:b.x,y1:b.y-unitH(b)*.5,t0:now(),dur:dur/speed,color,kind});return wait(dur)}
   function ring(x,y,color,r=60,dur=450){if(headless)return;fx.push({k:'ring',x,y,color,r:r*DPR,t0:now(),dur:dur/speed})}
   function beam(x,color,y){if(headless)return;fx.push({k:'beam',x,y:y==null?H*.6:y,color,t0:now(),dur:500/speed})}
-  const uw=u=>Math.min(W/4.1,H/6.6)*u.scale*(u.ps||1)*(u.hid?.52:.56)*(u.art.ovs||1);
-  const unitH=u=>uw(u)*(u.art.height/u.art.width||1.3);
+  const uw=u=>Math.min(W/4.1,H/6.6)*.86*u.scale*(u.ps||1)*(u.hid?.52:.56)*(u.art.ovs||1);
+  const unitH=u=>u.height??uw(u)*(u.art.ready?u.art.height/u.art.width:u.hid?1.42:1);
   function slash(x,y,col,angle){if(headless)return;fx.push({k:'slash',x,y,color:col,t0:now(),dur:300/speed,rot:angle})}
 
 
@@ -2696,7 +2709,7 @@ const Battle=(()=>{
     const sp=sprites[side];if(!sp)return;const team=alive(side);if(!team.length||!alive(foe(side)).length)return;
     const other=sprites[foe(side)];const coreWin=!other||sp.core>=other.core;
     const avgAtk=units.filter(u=>u.side===side).reduce((a,u)=>a+u.st.atk,0)/Math.max(1,units.filter(u=>u.side===side).length);
-    const fake={side,el:sp.el||'light',st:{atk:avgAtk*(.55+sp.star*.12),crit:.1,def:0},dmg:0,s:{},maxhp:avgAtk*8,x:sp.x,y:sp.y,cls:'mage',hid:null};
+    const fake={side,el:sp.el||'light',st:{atk:avgAtk*(.55+sp.star*.12),crit:.1,def:0},dmg:0,s:{},maxhp:avgAtk*8,x:sp.x,y:sp.y,height:sp.height,cls:'mage',hid:null};
     const sk=Object.assign({},sp.d.sk);
     if(coreWin){if(sk.t==='multi')sk.extra=1;if(sk.t==='heal')sk.m*=1.3;if(sk.t==='aoe')sk.m*=1.3;if(sk.t==='shield')sk.m*=1.3;if(sk.t==='strip')sk.weak=1;if(sk.t==='row')sk.ch=(sk.ch||0)+.2;if(sk.t==='buff')sk.m+=.2}
     if(!headless){sp.pulse=now();const el=document.createElement('div');el.className='sp-cast '+side;el.innerHTML=`<b>${sp.d.name}</b><small>${sp.d.role}${coreWin?' · Ядро ▲':''}</small>`;ov.appendChild(el);setTimeout(()=>el.remove(),1000/speed)}
@@ -2749,7 +2762,7 @@ const Battle=(()=>{
       const sp=sprites[side];
       if(!sp)return;
       const img=ART.get('s:'+sp.d.id,()=>ART.sprite(sp.d));
-      const sw=Math.min(W,H*.6)*.145*(img.ovs||1);
+      const sw=sp.height;
       const anchor=sp.y;
       const {dx,angle}=battleDirection({x:sp.x,y:sp.y,side});
       const progress=(t-(sp.pulse??-Infinity))/(820/speed);
@@ -2895,12 +2908,6 @@ const Battle=(()=>{
       if(!u.anim)continue;
       const dest=floorPoint(u.anim.tx*W/oldW,u.anim.ty*H/oldH,u);
       u.anim.tx=dest.x;u.anim.ty=dest.y;
-    }
-    for(const side of ['a','e']){
-      const sp=sprites[side];
-      if(!sp)continue;
-      const point=ground.project(W*(side==='a'?.14:.86),side==='a'?ground.bottom:ground.top,W*.042);
-      sp.x=point.x;sp.y=point.y;
     }
   }
   function updateHud(){if(headless||!hudRound)return;hudRound.textContent=`${roundNo}/${maxRounds} раунд`;
@@ -3239,18 +3246,59 @@ const TAPLINES={
  sol:['Солнце с тобой!','Хорошего дня!','Улыбнись!'],
  kairos:['Время на моей стороне.','Ты тратишь моё время… но мне нравится.','Хм. Смело.'],
  silas:['…Не отвлекай.','Буря близко.','Ладно. Ты ничего.']};
-function rigShow(o,id){const cv=$('.rigcv',o);if(!cv)return;const g=cv.getContext('2d');let anim='idle',t0=performance.now();const inst={profile:true};CombatAnimation.preload(id,'front',['rest','clash']);const dur={attack:900,ult:1600,hit:600,victory:1200,tap:1400};
-  let k=0;const box=cv.parentNode;cv.parentNode.onclick=()=>{k++;anim=k%3===0?'attack':'tap';t0=performance.now();SFX.click();if(anim==='attack')SFX.hit();
-    const L=TAPLINES[id]||TAPLINES._;const b=document.createElement('div');b.className='tapbub';b.textContent=L[(Math.random()*L.length)|0];box.querySelectorAll('.tapbub').forEach(x=>x.remove());box.appendChild(b);setTimeout(()=>b.remove(),1800)};
-  const loop=t=>{if(!cv.isConnected)return;g.setTransform(1,0,0,1,0,0);let a=anim,p=0;if(dur[a]){p=(t-t0)/dur[a];if(p>=1){anim='idle';a='idle'}}
-    if(a==='walk'&&t-t0>1800){anim='idle';a='idle'}
-    g.clearRect(0,0,280,300);
-    if(!RIG.draw(g,id,a,t,p,140,272,230,false,inst)){
-      const im=ART.get('h:'+id,()=>ART.hero(HMAP[id]));
-      const w=230*im.width/im.height;
-      if(im.ready)g.drawImage(im,140-w/2,42,w,230);
+function rigShow(o,id){
+  const cv=$('.rigcv',o),box=cv.parentNode,g=cv.getContext('2d'),hero=HMAP[id];
+  const motion=matchMedia('(prefers-reduced-motion: reduce)');
+  const inst={profile:true},height=215,x=140,base=268,duration=540;
+  const effect=PERF.star(ELEM[hero.el].c);
+  const bubble=document.createElement('span');
+  bubble.className='tapbub';
+  bubble.setAttribute('role','status');
+  let start=-Infinity,bubbleTimer,lastLine='';
+  CombatAnimation.preload(id,'front',['rest']);
+  box.onclick=()=>{
+    const t=performance.now();
+    if(t-start>=duration)start=t;
+    SFX.click();
+    const choices=(TAPLINES[id]||TAPLINES._).filter(line=>line!==lastLine);
+    bubble.textContent=lastLine=pick(choices);
+    box.appendChild(bubble);
+    clearTimeout(bubbleTimer);
+    bubbleTimer=setTimeout(()=>bubble.remove(),1800);
+  };
+  function loop(t){
+    if(!cv.isConnected){clearTimeout(bubbleTimer);return}
+    const elapsed=Math.max(0,t-start);
+    const active=!motion.matches&&elapsed<duration;
+    const phase=active?Math.min(23,Math.floor(elapsed/duration*24))/23:1;
+    const nod=active?Math.sin(phase*Math.PI)**2:0;
+    g.setTransform(1,0,0,1,0,0);
+    g.clearRect(0,0,cv.width,cv.height);
+    g.save();
+    g.translate(x,base);
+    g.transform(1+.024*nod,0,-.032*nod,1-.050*nod,0,0);
+    if(!RIG.draw(g,id,'idle',motion.matches?0:t,0,0,0,height,false,inst)){
+      const im=ART.get('h:'+id,()=>ART.hero(hero));
+      if(im.ready){
+        const w=height*im.width/im.height;
+        g.drawImage(im,-w/2,-height,w,height);
+      }
     }
-    requestAnimationFrame(loop)};requestAnimationFrame(loop)}
+    g.restore();
+    if(active){
+      g.globalAlpha=nod*.86;
+      for(let i=0;i<3;i++){
+        const size=(22+i*7)*(1+phase*.35);
+        const px=x+(i===0?-1:1)*(47+i*13+phase*23);
+        const py=base-height*(.68+i*.10+phase*.17);
+        g.drawImage(effect,px-size/2,py-size/2,size,size);
+      }
+      g.globalAlpha=1;
+    }
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+}
 // Keep the profile responsive while its full-resolution portrait loads.
 const BIG=new Map();
 function bigArt(id){
@@ -3290,7 +3338,7 @@ function openHero(id,selection=null){
       <button data-p="aw"><i>${ICON.svg('awaken')}</i><span>Пробужд.</span></button>
       <button data-p="team"><i>${ICON.svg(inT?'check':'heroes')}</i><span>${inT?'В отряде':'В отряд'}</span></button></div>
     <button class="hd2-arr l">‹</button><button class="hd2-arr r">›</button>
-    <div class="mini"><i></i><i></i><i></i><i></i><canvas class="rigcv" width="280" height="300"></canvas></div>
+    <button type="button" class="mini" aria-label="Реакция героя"><i></i><i></i><i></i><i></i><canvas class="rigcv" width="280" height="300" aria-hidden="true"></canvas></button>
     <div class="hd2-lv"><div class="cls">${CLS[d.cls].i} ${CLS[d.cls].n} · ${ELEM[d.el].i} ${ELEM[d.el].n}</div><div class="lv"><b>${h.lvl}</b><small>/${MAX_HERO_LEVEL}</small></div><em>LEVEL</em><div class="pw">${fmt(powerOf(s))}<i>${ICON.svg('sword')}</i></div></div>
     <div class="hd2-panel">
       <div class="hd2-stats"><span title="Атака" aria-label="Атака ${s.atk}">${ICON.svg('sword')}<b>${fmt(s.atk)}</b></span><span title="Здоровье" aria-label="Здоровье ${s.hp}">${ICON.svg('heart')}<b>${fmt(s.hp)}</b></span><span title="Защита" aria-label="Защита ${s.def}">${ICON.svg('shield')}<b>${fmt(s.def)}</b></span><span title="Скорость" aria-label="Скорость ${s.spd}">${ICON.svg('bolt')}<b>${fmt(s.spd)}</b></span></div>
