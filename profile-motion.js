@@ -34,14 +34,29 @@ const ProfileMotion = (() => {
     const lo=Math.floor(i),f=i-lo;
     return mix(frames[lo],frames[Math.min(lo+1,frames.length-1)],f*f*(3-2*f));
   };
-  const windup=[0,-.18,-.43,.02,.96,.75,.22,-.12,0];
-  const cast=[0,.04,.27,.61,1,.89,.59,.16,0];
-  const brace=[0,-.08,.05,.52,1,.94,.82,.34,0];
-  const dance=[0,.22,.88,.24,-.66,-.34,.62,.13,0];
+  // Main gestures are timed separately from the head, breathing and fabric.
   const stances={
-    astra:cast,bastion:brace,cipher:windup,glitch:cast,grom:brace,kairos:cast,lyra:dance,
-    mila:dance,murr:windup,nyx:cast,phoenix:cast,pixel:dance,pyro:windup,rain:cast,
-    raven:cast,scrap:windup,silas:windup,sol:cast,tesla:windup,volta:windup,zhar:dance,
+    astra:  [0,.06,.28,.72,1,.91,.51,.12,0],
+    bastion:[0,-.11,.36,.94,1,.94,.65,.19,0],
+    cipher: [0,-.26,-.44,.65,.17,.93,.40,-.11,0],
+    glitch: [0,.15,.55,.27,.87,1,.51,.07,0],
+    grom:   [0,-.18,.48,1,.84,.43,.57,.06,0],
+    kairos: [0,-.06,.21,.37,.69,1,.94,.43,0],
+    lyra:   [0,.38,.88,.55,-.24,.20,.72,.16,0],
+    mila:   [0,.30,.91,-.32,-.70,.52,.84,.10,0],
+    murr:   [0,-.26,-.38,.14,.81,1,.89,.41,0],
+    nyx:    [0,-.15,.34,.87,1,.56,-.20,-.12,0],
+    phoenix:[0,.04,.52,1,.68,.91,.55,.23,0],
+    pixel:  [0,-.20,.87,.32,.55,.74,.18,-.12,0],
+    pyro:   [0,-.30,-.49,.13,.99,.83,.43,.14,0],
+    rain:   [0,.17,.37,.64,1,.76,.89,.33,0],
+    raven:  [0,.05,.28,.61,.94,1,.72,.14,0],
+    scrap:  [0,.14,.50,1,.76,.33,-.16,-.06,0],
+    silas:  [0,-.12,-.39,-.24,.98,.85,.30,-.15,0],
+    sol:    [0,.26,.53,.67,.98,.93,.67,.25,0],
+    tesla:  [0,-.23,.60,.89,.34,.71,.31,-.09,0],
+    volta:  [0,-.21,-.37,.26,.91,.72,.23,-.08,0],
+    zhar:   [0,.19,.94,-.45,.74,.18,-.39,.04,0],
   };
 
   const poses=new Map();
@@ -54,15 +69,17 @@ const ProfileMotion = (() => {
       const phase=i/count, angle=phase*TAU;
       const breath=Math.sin(angle*2-.4);
       const move=key(stances[id],phase);
-      const follow=key(stances[id],(phase+.94)%1);
+      const follow=key(stances[id],(phase+.92)%1);
+      const gaze=key(stances[id],(phase+.045)%1);
+      const fabric=.014*Math.sin(angle-.83)+second[3]*.37*follow;
       return {
         phase,move,
-        drift:new Float32Array([lean*(.40*Math.sin(angle)+.60*move), lift*Math.cos(angle)-.002*breath,breath]),
+        drift:new Float32Array([lean*(.40*Math.sin(angle)+.60*move), lift*Math.cos(angle)-.002*breath,breath,fabric]),
         joints,
         turns:new Float32Array([
-          lean*(.42*move+.18*breath),-.006*breath-.008*move,-lean*3*move,
-          first[3]*move,first[4]*move,first[5]*move,
-          second[3]*follow,second[4]*follow,second[5]*follow,
+          lean*(.83*gaze+.18*breath),-.006*breath-.010*gaze,-lean*4*gaze,
+          first[3]*move*1.26,first[4]*move*1.22,first[5]*move*1.24,
+          second[3]*follow*1.18,second[4]*follow*1.12,second[5]*follow*1.13,
         ]),
       };
     });
@@ -81,7 +98,7 @@ const ProfileMotion = (() => {
       attribute vec2 uv;
       varying vec2 tex;
       uniform vec4 rect;
-      uniform vec3 drift;
+      uniform vec4 drift;
       uniform vec3 joint[3];
       uniform vec3 turn[3];
       void main(){
@@ -96,8 +113,11 @@ const ProfileMotion = (() => {
         float anchor=1.0-smoothstep(0.58,0.96,uv.y);
         float ribs=(uv.y-0.39)*5.0;
         float chest=exp(-ribs*ribs);
+        float outer=smoothstep(.10,.49,abs(uv.x-.50));
+        float hem=smoothstep(.38,.66,uv.y)*(1.0-smoothstep(.78,.98,uv.y));
         p+=vec2(drift.x*anchor+(uv.x-0.5)*chest*drift.z*0.018,
                 -drift.y-chest*drift.z*0.004);
+        p+=vec2(drift.w*outer*hem,-abs(drift.w)*outer*hem*.45);
         tex=uv;
         vec2 xy=rect.xy+rect.zw*p;
         gl_Position=vec4(xy.x*2.0-1.0,1.0-xy.y*2.0,0.0,1.0);
@@ -172,7 +192,7 @@ const ProfileMotion = (() => {
         lastRect=box;
       }
       if(pose.joints!==lastPose?.joints)gl.uniform3fv(joint,pose.joints);
-      gl.uniform3fv(drift,pose.drift);gl.uniform3fv(turn,pose.turns);
+      gl.uniform4fv(drift,pose.drift);gl.uniform3fv(turn,pose.turns);
       lastPose=pose;
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.drawElements(gl.TRIANGLES,triangles.length,gl.UNSIGNED_SHORT,0);

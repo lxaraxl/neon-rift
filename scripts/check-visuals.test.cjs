@@ -9,6 +9,21 @@ function load(file,global,context={}){
   return vm.runInNewContext(source+'\n'+global,context);
 }
 
+test('hero ranks keep their tiers, spend personal shards first and stop at 15',()=>{
+  const rank=load('hero-rank.js','HeroRank');
+  assert.equal(rank.starter,4);
+  assert.equal(rank.summoned,5);
+  assert.equal(rank.max,15);
+  assert.match(rank.badge(5),/class="hero-rank gold".*★★★★★/);
+  assert.match(rank.badge(6),/class="hero-rank red".*★<\/span>/);
+  assert.match(rank.badge(10),/class="hero-rank red".*★★★★★/);
+  assert.match(rank.badge(11),/class="hero-rank neon".*>11<\/strong>/);
+  assert.equal(rank.upgrade({star:5,shards:6},13).ready,false);
+  assert.equal(rank.upgrade({star:5,shards:6},14).wildcard,14);
+  assert.equal(rank.upgrade({star:5,shards:22},14).personal,20);
+  assert.equal(rank.upgrade({star:15,shards:9999},9999),null);
+});
+
 test('the core platform holds both formations and their lunge points',()=>{
   const layout=load('battle-layout.js','BattleLayout');
   for(const [width,height] of [[320,580],[430,910],[740,430]]){

@@ -14,6 +14,8 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[1]
 SOURCES = ROOT / 'art/miniatures'
 OUTPUT = ROOT / 'art/combat'
+SHOWCASE_OUTPUT = ROOT / 'art/showcase'
+SHOWCASE_SIZE = (112, 119)
 HERO_SIZE = (192, 204, 150, 175)
 CREATURE_SIZE = (144, 153, 111, 131)
 WIDTH, HEIGHT, BODY, FOOT = HERO_SIZE
@@ -32,6 +34,30 @@ HEAD = {'astra':.31, 'glitch':.31, 'pyro':.36, 'sol':.29, 'mila':.32, 'kairos':.
         'raven':.27, 'rain':.31, 'phoenix':.30, 'volta':.29, 'lyra':.27, 'murr':.28}
 HIPS = {'astra':.72, 'glitch':.69, 'kairos':.68, 'raven':.68, 'pyro':.72,
         'silas':.65, 'scrap':.66, 'mila':.64, 'pixel':.66, 'nyx':.69}
+# Timing, hand reach/lift, opposite hand, turn, body tilt, lift, cloth follow-through.
+SHOWCASE = {
+    'astra':  ((.10,.44,.89), .05,-.19,-.04,-.05,-.58, .035,.023, .075),
+    'bastion':((.06,.31,.87), .16,-.12, .08,-.15,-.44,-.045,0,  -.030),
+    'cipher': ((.16,.43,.72), .18,-.11,-.08,-.08,-.74, .059,0,   .056),
+    'glitch': ((.13,.56,.90), .06,-.15,-.09,-.16,-.48, .024,.052,.096),
+    'grom':   ((.08,.33,.82), .12,-.15, .09,-.13, .44,-.055,0,  -.044),
+    'kairos': ((.20,.58,.94), .12,-.14,-.16,-.06,-.67, .036,.012,.100),
+    'lyra':   ((.09,.39,.79), .08,-.19,-.13,-.09,-.54, .065,.027,.070),
+    'mila':   ((.07,.26,.65), .14,-.14,-.09,-.10, .64, .069,.013,.084),
+    'murr':   ((.18,.56,.86), .12,-.12, .11,-.16,-.58,-.058,0,  -.083),
+    'nyx':    ((.10,.35,.73), .06,-.09,-.14,-.15,-.70,-.063,.018,.108),
+    'phoenix':((.08,.47,.92), .10,-.23,-.14,-.20,-.39, .008,.067,.140),
+    'pixel':  ((.10,.25,.70), .14,-.19,-.05,-.14, .61, .062,.008,.060),
+    'pyro':   ((.17,.48,.86), .12,-.21,-.07,-.05,-.62, .044,.019,.120),
+    'rain':   ((.11,.52,.92), .13,-.15,-.09,-.11,-.48, .038,.021,.090),
+    'raven':  ((.21,.61,.94), .11,-.18,-.10,-.13,-.57,-.041,.036,.138),
+    'scrap':  ((.07,.31,.76), .11,-.12, .07,-.17, .44,-.040,0,  -.050),
+    'silas':  ((.15,.44,.82), .18,-.09,-.13,-.13,-.70, .071,.004,.108),
+    'sol':    ((.11,.49,.93), .09,-.21,-.13,-.11,-.49, .028,.025,.086),
+    'tesla':  ((.09,.36,.72), .14,-.13,-.08,-.08, .52, .053,0,   .055),
+    'volta':  ((.13,.42,.74), .19,-.10, .08,-.08,-.64,-.048,0,  -.074),
+    'zhar':   ((.04,.24,.68), .19,-.11, .10,-.04,-.77, .076,.015,.100),
+}
 Y, X = np.mgrid[:HEIGHT, :WIDTH].astype(np.float32)
 RASTERIZE = None
 
@@ -143,7 +169,7 @@ def setup(path, hero, view, direction):
     return rgba, weights, gait_weights, arm_pivots, arm_masks, far_leg
 
 
-def pose(action,q,style,direction,shape):
+def pose(action,q,style,direction,shape,hero=None):
     # Coordinates are measured in units of character height.
     # Timed positions are authored for the head, torso, pelvis, arms, knees, boots and cloth.
     wave, strut = math.sin(2*math.pi*q), math.cos(2*math.pi*q)
@@ -151,7 +177,22 @@ def pose(action,q,style,direction,shape):
     lead = 1 if direction>0 else -1
     root_x = root_y = tilt = arm_x = arm_y = guard = stride = crouch = fabric = rise = fall = 0.
     arm_x_other = arm_y_other = lead_turn = support_turn = 0.
-    if action=='idle':
+    if action=='showcase':
+        timing,reach,lift,other,other_lift,turn,lean,hover,trail=SHOWCASE[hero]
+        gesture=impulse(q,*timing)
+        follow=impulse(q,timing[1]-.12,min(.83,timing[1]+.13),min(1,timing[2]+.09))
+        root_y=-.011*wave
+        rise=hover*gesture
+        crouch=(.015 if style=='tank' else 0)*follow
+        tilt=lean*gesture+.010*wave
+        arm_x=direction*reach*gesture
+        arm_y=lift*gesture-.008*wave
+        arm_x_other=direction*other*follow
+        arm_y_other=other_lift*follow
+        lead_turn=direction*turn*gesture
+        support_turn=-direction*turn*.46*follow
+        fabric=trail*follow+.021*math.sin(2*math.pi*q+.75)
+    elif action=='idle':
         root_y=-.010*wave
         tilt=.013*wave
         arm_y=.014*wave
@@ -363,6 +404,22 @@ def build(job):
         atlas.save(OUTPUT/f'{hero}-{view}-{group}.webp',quality=82,method=3,alpha_quality=78)
 
 
+def build_showcase(job):
+    path,hero,_,style,shape=job
+    direction=-1 if hero in FRONT_LEFT else 1
+    rgba,weights,_,pivots,masks,_=setup(path,hero,'front',direction)
+    # The pose swings the props above the hips and leaves the boots in place.
+    upper=np.clip((FOOT-.15*BODY-Y)/(.25*BODY),0,1)
+    masks=[mask*upper for mask in masks]
+    w,h=SHOWCASE_SIZE
+    atlas=Image.new('RGBA',(6*w,4*h))
+    for i in range(FRAMES):
+        offsets,rotations=pose('showcase',i/FRAMES,style,direction,shape,hero)
+        frame=render(rgba,weights,offsets,pivots,masks,rotations,0,direction)
+        atlas.paste(frame.resize((w,h),Image.Resampling.LANCZOS),(i%6*w,i//6*h))
+    atlas.save(SHOWCASE_OUTPUT/f'{hero}.webp',quality=81,method=4,alpha_quality=86)
+
+
 def bake_turns(jobs):
     views=('front','front-alt','back','back-alt','left','right')
     for hero,shape in sorted({(hero,shape) for _,hero,_,_,shape in jobs}):
@@ -381,9 +438,12 @@ def main():
     parser.add_argument('--hero',action='append',help='Only build the named hero (repeatable)')
     parser.add_argument('--creatures-only',action='store_true')
     parser.add_argument('--turns-only',action='store_true',help='Build the compact turn previews from rest frames')
+    parser.add_argument('--showcase',action='store_true',help='Build the 24-frame collection and profile miniature loops')
     parser.add_argument('--group',action='append',choices=GROUPS,help='Only rebake this clip group')
     parser.add_argument('--jobs',type=int,default=4)
     args=parser.parse_args()
+    if args.showcase and (args.creatures_only or args.turns_only or args.group):
+        parser.error('--showcase builds the hero collection loops and can be filtered with --hero')
     html=(ROOT/'index.html').read_text()
     classes=dict(re.findall(r"\{id:'([a-z]+)',name:'[^']+',rar:'[^']+',el:'[^']+',cls:'([^']+)'",html))
     jobs=[]
@@ -404,12 +464,19 @@ def main():
     if args.turns_only:
         bake_turns(jobs)
         return
+    if args.showcase:
+        jobs=[job for job in jobs if job[2]=='front' and job[4]=='hero']
+        SHOWCASE_OUTPUT.mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
         library=Path(tmp)/'rasterizer.so'
         subprocess.run(['c++','-O3','-std=c++17','-shared','-fPIC',
                         str(Path(__file__).with_name('skin-rasterizer.cpp')),
                         '-o',str(library)],check=True)
         with ProcessPoolExecutor(args.jobs,initializer=load_rasterizer,initargs=(library,)) as pool:
+            if args.showcase:
+                list(pool.map(build_showcase,jobs))
+                print(f'{len(jobs)} hero showcases baked')
+                return
             for i,_ in enumerate(pool.map(build,((*job,tuple(args.group or GROUPS)) for job in jobs)),1):
                 if i==len(jobs) or i%6==0:
                     print(f'{i}/{len(jobs)} directions baked',flush=True)
